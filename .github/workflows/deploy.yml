@@ -68,3 +68,4 @@ jobs:
           TAG: ${{ needs.build.outputs.tags }}
         run: |
           TAG=${{ needs.build.outputs.tags }} docker compose up -d --quiet-pull
+          docker compose exec nginx nginx -s reload
