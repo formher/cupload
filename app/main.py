@@ -4,7 +4,8 @@ import uuid
 import json
 import yaml
 import xml.dom.minidom
-
+import qrcode
+import io
 
 app = Flask(__name__)
 
@@ -50,7 +51,7 @@ def upload_file(filename):
     file_path = os.path.join(dir_path, filename)
     with open(file_path, 'wb') as f:
         f.write(request.data)
-    return f"You can download your file at https://cupload.io/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
+    return f"You can download your file at https://cupload.io/{random_id}/{filename}\nQR Code: https://cupload.io/qr/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
 
 
 @app.route('/<random_id>/<filename>', methods=['GET'])
@@ -83,6 +84,26 @@ def serve_file(random_id, filename):
             abort(500, f"Error serving file: {e}")
     else:
         abort(404)
+
+@app.route('/qr/<random_id>/<filename>', methods=['GET'])
+def get_qr(random_id, filename):
+    # Verify file exists first (but don't delete it)
+    dir_path = os.path.join(UPLOAD_FOLDER, random_id)
+    file_path = os.path.join(dir_path, filename)
+    
+    if not os.path.exists(file_path):
+        abort(404)
+        
+    # Generate QR Code
+    url = f"https://cupload.io/{random_id}/{filename}"
+    img = qrcode.make(url)
+    
+    # Save to buffer
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    
+    return make_response(buf.getvalue(), {'Content-Type': 'image/png'})
 
 @app.route('/pretty', methods=['POST'])
 def upload_pretty_file():
