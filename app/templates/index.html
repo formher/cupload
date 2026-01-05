@@ -43,6 +43,10 @@
 
                 <p class="text-sm text-muted" style="margin-top: 20px;">With Password:</p>
                 <pre><code>$ curl -T file.txt -H "X-Password: 123" https://qurl.sh</code></pre>
+
+                <p class="text-sm text-muted" style="margin-top: 20px;">TTL & Limits:</p>
+                <pre><code>$ curl -T file.txt -H "X-TTL: 1h" https://qurl.sh
+$ curl -T file.txt -H "X-Downloads: 5" https://qurl.sh</code></pre>
             </div>
 
             <!-- Download Card -->
@@ -90,19 +94,7 @@ $ curl -O https://qurl.sh/abcd/file.txt</code></pre>
                 <pre><code>$ echo "secret" | curl -d @- https://qurl.sh/secret</code></pre>
             </div>
 
-            <!-- Advanced Features Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    TTL & Limits
-                </h3>
-                <p class="text-sm text-muted">Keep files longer or allow more downloads.</p>
-                <pre><code>$ curl -T file.txt -H "X-TTL: 1h" ...
-$ curl -T file.txt -H "X-Downloads: 5" ...</code></pre>
-            </div>
+
 
             <!-- Code Viewer Card -->
             <div class="card">
