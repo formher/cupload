@@ -24,7 +24,8 @@ cupload.io - Secure File Sharing
 
 Upload:
   curl -T file.txt https://cupload.io
-Password Protection:
+
+  # With Password
   curl -T file.txt -H "X-Password: secret" https://cupload.io
 
 Download:
