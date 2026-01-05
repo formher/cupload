@@ -10,11 +10,13 @@ env:
   CONTAINER_NAME: cupload
   
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
+  build:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout repository
@@ -43,8 +45,26 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy:
+    runs-on: self-hosted
+    needs: build
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Deploy with Docker Compose
         env:
-          TAG: ${{ steps.meta.outputs.tags }}
+          TAG: ${{ needs.build.outputs.tags }}
         run: |
-          TAG=${{ steps.meta.outputs.tags }} docker compose up -d --quiet-pull
+          TAG=${{ needs.build.outputs.tags }} docker compose up -d --quiet-pull

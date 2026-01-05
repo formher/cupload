@@ -28,6 +28,9 @@ Download:
   wget https://cupload.io/<id>/file.txt
   curl -O https://cupload.io/<id>/file.txt
 
+QR Code (View on phone):
+  https://cupload.io/qr/<id>/file.txt
+
 Pretty Print (JSON/YAML/XML):
   curl -F "file=@config.yaml" https://cupload.io/pretty
 
