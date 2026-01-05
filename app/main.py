@@ -1,5 +1,8 @@
 from flask import Flask, request, abort, render_template, make_response, jsonify, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import uuid
 import json
@@ -7,8 +10,42 @@ import yaml
 import xml.dom.minidom
 import qrcode
 import io
+import time
+import shutil
 
 app = Flask(__name__)
+
+# Rate Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Auto-Cleanup Job
+def cleanup_old_files():
+    now = time.time()
+    cutoff = now - (24 * 3600)  # 24 hours ago
+    count = 0
+    
+    if os.path.exists(UPLOAD_FOLDER):
+        for folder_name in os.listdir(UPLOAD_FOLDER):
+            folder_path = os.path.join(UPLOAD_FOLDER, folder_name)
+            if os.path.isdir(folder_path):
+                # Check modification time of folder
+                if os.path.getmtime(folder_path) < cutoff:
+                    try:
+                        shutil.rmtree(folder_path)
+                        count += 1
+                    except Exception as e:
+                        print(f"Error cleaning {folder_path}: {e}")
+    if count > 0:
+        print(f"Cleanup: Removed {count} expired folders.")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=cleanup_old_files, trigger="interval", hours=1)
+scheduler.start()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.abspath(os.path.join(BASE_DIR, '../uploads'))
@@ -43,6 +80,7 @@ Note: Files auto-delete after the first download. Max 50MB.
     return render_template('index.html')
 
 @app.route('/<filename>', methods=['PUT'])
+@limiter.limit("10 per minute")
 def upload_file(filename):
     max_size = 50 * 1024 * 1024  # 5 MB
 
@@ -139,6 +177,7 @@ def get_qr(random_id, filename):
     return make_response(buf.getvalue(), {'Content-Type': 'image/png'})
 
 @app.route('/pretty', methods=['POST'])
+@limiter.limit("10 per minute")
 def upload_pretty_file():
     if 'file' not in request.files:
         return "No file uploaded", 400

@@ -4,8 +4,25 @@ services:
     image: ${TAG}
     container_name: cupload
     restart: unless-stopped
+    # Internal usage only
+    volumes:
+      - /opt/cupload/uploads:/uploads
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - /opt/cupload/uploads:/uploads
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - cupload
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
