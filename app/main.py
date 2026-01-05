@@ -227,5 +227,9 @@ def render_pretty_file(random_id, filename):
     except Exception as e:
         return f"Error parsing file: {e}", 500
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)

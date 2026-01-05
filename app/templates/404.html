@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found - qurl.sh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>qurl.sh</h1>
+            <p class="tagline">404: File Not Found</p>
+        </header>
+
+        <div class="card error-card">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+            </div>
+            <div class="terminal-body">
+                <p><span class="prompt">$</span> cat file_status.txt</p>
+                <p class="error-msg">Error: File not found.</p>
+                <br>
+                <p class="comment"># Possible reasons:</p>
+                <ul class="reason-list">
+                    <li>The file was already accessed and <strong>self-destructed</strong>. 💥</li>
+                    <li>The link is incorrect or expired (24h limit). ⏳</li>
+                    <li>The file never existed. 👻</li>
+                </ul>
+                <br>
+                <p><span class="prompt">$</span> <a href="/" class="home-link">cd /home/upload_new_file</a></p>
+            </div>
+        </div>
+
+        <footer>
+            <p><a href="https://github.com/formher/cupload" target="_blank">View Source on GitHub</a></p>
+        </footer>
+    </div>
+</body>
+
+</html>
