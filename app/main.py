@@ -32,7 +32,7 @@ def upload_file(filename):
     file_path = os.path.join(dir_path, filename)
     with open(file_path, 'wb') as f:
         f.write(request.data)
-    return f"You can download your file at http://cupload.io/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
+    return f"You can download your file at https://cupload.io/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
 
 
 @app.route('/<random_id>/<filename>', methods=['GET'])
