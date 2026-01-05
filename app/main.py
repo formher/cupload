@@ -14,6 +14,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/', methods=['GET'])
 def index():
+    agent = request.user_agent.string.lower()
+    if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
+        return """
+cupload.io - Secure File Sharing
+================================
+
+Upload:
+  curl -T file.txt https://cupload.io
+
+Download:
+  wget https://cupload.io/<id>/file.txt
+  curl -O https://cupload.io/<id>/file.txt
+
+Pretty Print (JSON/YAML/XML):
+  curl -F "file=@config.yaml" https://cupload.io/pretty
+
+Note: Files auto-delete after the first download. Max 50MB.
+"""
     return render_template('index.html')
 
 @app.route('/<filename>', methods=['PUT'])
