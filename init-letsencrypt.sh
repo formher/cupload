@@ -2,7 +2,7 @@
 
 domains=(qurl.sh)
 rsa_key_size=4096
-data_path="./certbot"
+data_path="/opt/qurl_data/certbot"
 export TAG=nginx:alpine
 email="your-email@example.com" # Adding a valid email is recommended
 staging=0 # Set to 1 if you're testing your setup to avoid hitting request limits
