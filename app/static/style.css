@@ -55,10 +55,27 @@ header {
 
 h1 {
     font-weight: 800;
-    font-size: 3rem;
+    font-size: 3.5rem;
     letter-spacing: -0.05rem;
     margin-bottom: 10px;
-    color: #1a202c;
+    
+    /* Gradient Text */
+    background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    
+    /* Animation */
+    animation: fadeUp 0.8s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+@keyframes fadeUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 h2 {
