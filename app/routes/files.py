@@ -86,49 +86,102 @@ def serve_file(random_id, filename):
                 return render_template('password.html')
 
         try:
-            # Code Viewer Logic
+            # Code/Media Viewer Logic
             agent = request.user_agent.string.lower()
             is_cli = any(cli in agent for cli in ['curl', 'wget', 'httpie'])
             is_raw = request.args.get('raw') == 'true'
             
             ext = os.path.splitext(filename)[1].lower()
-            supported_exts = [
+            
+            # Categories
+            code_exts = [
                 '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml', 
                 '.sh', '.md', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb', 
                 '.php', '.sql', '.xml', '.log', '.ini', '.conf'
             ]
+            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
+            pdf_exts = ['.pdf']
+            
+            supported_exts = code_exts + image_exts + pdf_exts
             
             if not is_cli and not is_raw and ext in supported_exts:
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        file_content = f.read()
-                    
-                    # Trigger cleanup (count as view)
+                # Use raw=true in template for media src
+                
+                # Determine Type
+                file_type = 'code'
+                if ext in image_exts:
+                    file_type = 'image'
+                elif ext in pdf_exts:
+                    file_type = 'pdf'
+                
+                # For code, read content. For media, we handle in template via src
+                file_content = ""
+                lang = "none"
+                
+                if file_type == 'code':
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            file_content = f.read()
+                        
+                        lang_map = {
+                            '.py': 'python', '.js': 'javascript', '.sh': 'bash', 
+                            '.md': 'markdown', '.go': 'go', '.rs': 'rust',
+                            '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
+                            '.html': 'html', '.css': 'css', '.sql': 'sql',
+                            '.java': 'java', '.c': 'c', '.cpp': 'cpp'
+                        }
+                        lang = lang_map.get(ext, 'none')
+                    except UnicodeDecodeError:
+                        # Fallback if binary detected in text ext
+                        pass
+                
+                # Trigger cleanup (count as view) mechanism logic:
+                # If we render the viewer, it counts as 1 view.
+                # However, for images/pdfs, the browser will make a SECOND request with ?raw=true to fetch the img src.
+                # If limits=1, that second request would fail if we decrement here!
+                
+                # STRATEGY: 
+                # For 'code', we embed content, so we decrement here.
+                # For 'image'/'pdf', we DO NOT decrement here. We let the ?raw=true request (coming from <img> tag) handle the decrement.
+                
+                if file_type == 'code':
                     update_meta_cleanup(file_path, dir_path, meta_path)
-                    
-                    lang_map = {
-                        '.py': 'python', '.js': 'javascript', '.sh': 'bash', 
-                        '.md': 'markdown', '.go': 'go', '.rs': 'rust',
-                        '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
-                        '.html': 'html', '.css': 'css', '.sql': 'sql',
-                        '.java': 'java', '.c': 'c', '.cpp': 'cpp'
-                    }
-                    lang = lang_map.get(ext, 'none')
-                    
-                    return render_template('viewer.html', 
-                                         filename=filename, 
-                                         content=file_content, 
-                                         language=lang)
-                except UnicodeDecodeError:
-                    pass
 
-            # Default File Serving
+                return render_template('viewer.html', 
+                                     filename=filename, 
+                                     content=file_content, 
+                                     language=lang,
+                                     file_type=file_type)
+
+            # Default File Serving (or ?raw=true)
             with open(file_path, 'rb') as f:
                 file_data = f.read()
 
             response = make_response(file_data)
-            response.headers['Content-Type'] = 'application/octet-stream'
-            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            # Set correct MIME for media
+            if ext == '.pdf':
+                response.headers['Content-Type'] = 'application/pdf'
+            elif ext in ['.jpg', '.jpeg']:
+                response.headers['Content-Type'] = 'image/jpeg'
+            elif ext == '.png':
+                response.headers['Content-Type'] = 'image/png'
+            elif ext == '.gif':
+                response.headers['Content-Type'] = 'image/gif'
+            elif ext == '.svg':
+                response.headers['Content-Type'] = 'image/svg+xml'
+            elif ext == '.webp':
+                response.headers['Content-Type'] = 'image/webp'
+            else:
+                response.headers['Content-Type'] = 'application/octet-stream'
+                
+            # Only force download for generic files, not media we want to view raw
+            if is_raw and ext not in image_exts and ext not in pdf_exts:
+                 response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+            elif not is_raw:
+                 # Standard curl/wget behavior
+                 response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
 

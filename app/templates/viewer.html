@@ -70,9 +70,19 @@
                     <button id="downloadBtn" onclick="downloadRaw()">Download Raw</button>
                 </div>
             </div>
-            <!-- Store content safely for JS -->
+            <!-- Store content safely for JS if code -->
+            {% if file_type == 'code' %}
             <textarea id="rawContent" style="display:none;">{{ content }}</textarea>
             <pre><code class="language-{{ language }}">{{ content }}</code></pre>
+            {% elif file_type == 'image' %}
+            <div style="text-align: center;">
+                <img src="?raw=true" alt="{{ filename }}" style="max-width: 100%; border-radius: 8px;">
+            </div>
+            {% elif file_type == 'pdf' %}
+            <div style="height: 800px;">
+                <embed src="?raw=true" type="application/pdf" width="100%" height="100%" style="border-radius: 8px;">
+            </div>
+            {% endif %}
         </div>
 
         <div style="text-align: center; margin-top: 40px;">
