@@ -1,6 +1,6 @@
 #!/bin/bash
 
-domains=(qurl.sh)
+domains=(qurl.sh cupload.io)
 rsa_key_size=4096
 data_path="/opt/qurl_data/certbot"
 export TAG=nginx:alpine
