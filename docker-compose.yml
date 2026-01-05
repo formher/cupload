@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  cupload:
+    # TAG will be provided by environment variable during deployment
+    image: ghcr.io/formher/cupload:${TAG}
+    container_name: cupload
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/cupload/uploads:/uploads

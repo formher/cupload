@@ -43,17 +43,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Stop and remove old container
+      - name: Deploy with Docker Compose
+        env:
+          TAG: ${{ steps.meta.outputs.tags }}
         run: |
-          docker stop ${{ env.CONTAINER_NAME }} || true
-          docker rm ${{ env.CONTAINER_NAME }} || true
-
-      - name: Run new container
-        run: |
-          docker run -d \
-            --name ${{ env.CONTAINER_NAME }} \
-            --restart unless-stopped \
-            -p 80:80 \
-            -p 443:443 \
-            -v /opt/cupload/uploads:/uploads \
-            ${{ steps.meta.outputs.tags }}
+          TAG=${{ steps.meta.outputs.tags }} docker compose up -d --quiet-pull
