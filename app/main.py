@@ -339,11 +339,6 @@ def render_pretty_file(random_id, filename):
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
-
 @app.route('/secret', methods=['POST'])
 @limiter.limit("10 per minute")
 def create_secret():
@@ -405,3 +400,6 @@ def get_secret(random_id, key):
     except Exception as e:
         app.logger.error(f"Secret error: {e}")
         abort(404)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
