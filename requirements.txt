@@ -4,3 +4,4 @@ pyyaml
 qrcode[pil]>=7.4.2
 Flask-Limiter
 APScheduler
+cryptography

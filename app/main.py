@@ -12,6 +12,8 @@ import qrcode
 import io
 import time
 import shutil
+from cryptography.fernet import Fernet
+import base64
 
 app = Flask(__name__)
 
@@ -24,22 +26,54 @@ limiter = Limiter(
 )
 
 # Auto-Cleanup Job
+def parse_ttl(ttl_str):
+    if not ttl_str:
+        return 24 * 3600  # Default 24h
+    try:
+        unit = ttl_str[-1].lower()
+        value = int(ttl_str[:-1])
+        if unit == 's': return value
+        if unit == 'm': return value * 60
+        if unit == 'h': return value * 3600
+        if unit == 'd': return value * 86400
+        return 24 * 3600
+    except ValueError:
+        return 24 * 3600
+
+# Auto-Cleanup Job
 def cleanup_old_files():
     now = time.time()
-    cutoff = now - (24 * 3600)  # 24 hours ago
     count = 0
     
     if os.path.exists(UPLOAD_FOLDER):
         for folder_name in os.listdir(UPLOAD_FOLDER):
             folder_path = os.path.join(UPLOAD_FOLDER, folder_name)
             if os.path.isdir(folder_path):
-                # Check modification time of folder
-                if os.path.getmtime(folder_path) < cutoff:
-                    try:
+                # Check for meta file
+                expiry_time = None
+                try:
+                    for f_name in os.listdir(folder_path):
+                        if f_name.endswith('.meta'):
+                            with open(os.path.join(folder_path, f_name), 'r') as f:
+                                meta = json.load(f)
+                                expiry_time = meta.get('expiry_time')
+                            break
+                    
+                    should_delete = False
+                    if expiry_time:
+                        if now > expiry_time:
+                            should_delete = True
+                    else:
+                        # Fallback: delete if older than 24h
+                        if os.path.getmtime(folder_path) < (now - 86400):
+                            should_delete = True
+
+                    if should_delete:
                         shutil.rmtree(folder_path)
                         count += 1
-                    except Exception as e:
-                        print(f"Error cleaning {folder_path}: {e}")
+                except Exception as e:
+                    print(f"Error cleaning {folder_path}: {e}")
+
     if count > 0:
         print(f"Cleanup: Removed {count} expired folders.")
 
@@ -98,15 +132,55 @@ def upload_file(filename):
 
     # Check for password header
     password = request.headers.get('X-Password')
+    
+    # Check for TTL and Downloads
+    ttl_str = request.headers.get('X-TTL')
+    downloads_str = request.headers.get('X-Downloads')
+    
+    expiry_time = time.time() + parse_ttl(ttl_str)
+    try:
+        remaining_downloads = int(downloads_str) if downloads_str else 1
+    except ValueError:
+        remaining_downloads = 1
+
+    meta_data = {
+        'expiry_time': expiry_time,
+        'remaining_downloads': remaining_downloads
+    }
+
     if password:
-        meta_path = file_path + '.meta'
-        with open(meta_path, 'w') as f:
-            f.write(json.dumps({'password_hash': generate_password_hash(password)}))
+        meta_data['password_hash'] = generate_password_hash(password)
+
+    meta_path = file_path + '.meta'
+    with open(meta_path, 'w') as f:
+        f.write(json.dumps(meta_data))
 
     with open(file_path, 'wb') as f:
         f.write(request.data)
+        
     return f"You can download your file at https://qurl.sh/{random_id}/{filename}\nQR Code: https://qurl.sh/qr/{random_id}/{filename}\nTry wget http://qurl.sh/{random_id}/{filename}\n"
 
+
+def update_meta_cleanup(file_path, dir_path, meta_path):
+    try:
+        if os.path.exists(meta_path):
+            with open(meta_path, 'r') as f:
+                current_meta = json.load(f)
+            
+            remaining = current_meta.get('remaining_downloads', 1)
+            if remaining > 1:
+                current_meta['remaining_downloads'] = remaining - 1
+                with open(meta_path, 'w') as f:
+                    f.write(json.dumps(current_meta))
+            else:
+                shutil.rmtree(dir_path)
+                # print(f"Deleted (Limits reached): {dir_path}") 
+        else:
+             shutil.rmtree(dir_path)
+             # print(f"Deleted (Default): {dir_path}")
+
+    except Exception as e:
+        print(f"Cleanup failed: {e}")
 
 @app.route('/<random_id>/<filename>', methods=['GET', 'POST'])
 def serve_file(random_id, filename):
@@ -115,21 +189,64 @@ def serve_file(random_id, filename):
     meta_path = file_path + '.meta'
 
     if os.path.exists(file_path):
-        # Check for Password Protection
+        # Start matching Metadata Logic
+        meta_data = {}
         if os.path.exists(meta_path):
             with open(meta_path, 'r') as f:
-                meta = json.load(f)
-            
-            # If POST, check credentials
+                meta_data = json.load(f)
+
+        # Check Expiry
+        if 'expiry_time' in meta_data and time.time() > meta_data['expiry_time']:
+            shutil.rmtree(dir_path, ignore_errors=True)
+            abort(404)
+
+        # Check Password Protection
+        if 'password_hash' in meta_data:
             if request.method == 'POST':
                 password_input = request.form.get('password')
-                if not password_input or not check_password_hash(meta['password_hash'], password_input):
+                if not password_input or not check_password_hash(meta_data['password_hash'], password_input):
                     return render_template('password.html', error="Invalid Password"), 401
-            # If GET, show prompt
             else:
                 return render_template('password.html')
 
         try:
+            # Code Viewer Logic
+            agent = request.user_agent.string.lower()
+            is_cli = any(cli in agent for cli in ['curl', 'wget', 'httpie'])
+            is_raw = request.args.get('raw') == 'true'
+            
+            ext = os.path.splitext(filename)[1].lower()
+            supported_exts = [
+                '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml', 
+                '.sh', '.md', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb', 
+                '.php', '.sql', '.xml', '.log', '.ini', '.conf'
+            ]
+            
+            if not is_cli and not is_raw and ext in supported_exts:
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        file_content = f.read()
+                    
+                    # Trigger cleanup (count as view)
+                    update_meta_cleanup(file_path, dir_path, meta_path)
+                    
+                    lang_map = {
+                        '.py': 'python', '.js': 'javascript', '.sh': 'bash', 
+                        '.md': 'markdown', '.go': 'go', '.rs': 'rust',
+                        '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
+                        '.html': 'html', '.css': 'css', '.sql': 'sql',
+                        '.java': 'java', '.c': 'c', '.cpp': 'cpp'
+                    }
+                    lang = lang_map.get(ext, 'none')
+                    
+                    return render_template('viewer.html', 
+                                         filename=filename, 
+                                         content=file_content, 
+                                         language=lang)
+                except UnicodeDecodeError:
+                    pass
+
+            # Default File Serving
             with open(file_path, 'rb') as f:
                 file_data = f.read()
 
@@ -140,15 +257,8 @@ def serve_file(random_id, filename):
             response.headers['Pragma'] = 'no-cache'
 
             @response.call_on_close
-            def remove_file():
-                try:
-                    os.remove(file_path)
-                    if os.path.exists(meta_path):
-                        os.remove(meta_path)
-                    os.rmdir(dir_path)
-                    app.logger.info(f"Deleted: {file_path} and {dir_path}")
-                except Exception as e:
-                    app.logger.error(f"Cleanup failed: {e}")
+            def update_or_delete():
+                update_meta_cleanup(file_path, dir_path, meta_path)
 
             return response
         except Exception as e:
@@ -233,3 +343,65 @@ def page_not_found(e):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+
+@app.route('/secret', methods=['POST'])
+@limiter.limit("10 per minute")
+def create_secret():
+    # Read raw text or form data
+    data = request.get_data()
+    if not data:
+        return "No content provided\n", 400
+        
+    # Generate Key and encryption suite
+    # We use Fernet (AES-128 CBC + HMAC) for simplicity and safety
+    key = Fernet.generate_key() 
+    f = Fernet(key)
+    
+    # Encrypt
+    token = f.encrypt(data)
+    
+    # Store
+    random_id = str(uuid.uuid4())[:12] # Longer ID for secrets
+    dir_path = os.path.join(UPLOAD_FOLDER, 'secrets', random_id)
+    os.makedirs(dir_path, exist_ok=True)
+    file_path = os.path.join(dir_path, 'secret.enc')
+    
+    with open(file_path, 'wb') as file:
+        file.write(token)
+    
+    # Return URL with Key (Key is URL-safe base64)
+    # Fernet key is bytes, need to decode for URL
+    key_str = key.decode('utf-8')
+    
+    return f"Secret Link (Burn after reading): https://qurl.sh/secret/{random_id}/{key_str}\n"
+
+@app.route('/secret/<random_id>/<key>', methods=['GET'])
+def get_secret(random_id, key):
+    try:
+        dir_path = os.path.join(UPLOAD_FOLDER, 'secrets', random_id)
+        file_path = os.path.join(dir_path, 'secret.enc')
+        
+        if not os.path.exists(file_path):
+            abort(404)
+            
+        # Decrypt
+        try:
+            f = Fernet(key.encode('utf-8'))
+            with open(file_path, 'rb') as file:
+                token = file.read()
+            secret_data = f.decrypt(token)
+        except Exception:
+            return "Invalid Key or Corrupt Data", 400
+            
+        # BURN IT
+        try:
+             shutil.rmtree(dir_path)
+             app.logger.info(f"Burned secret: {random_id}")
+        except Exception as e:
+            app.logger.error(f"Failed to burn secret {random_id}: {e}")
+            
+        return make_response(secret_data, {'Content-Type': 'text/plain'})
+        
+    except Exception as e:
+        app.logger.error(f"Secret error: {e}")
+        abort(404)
