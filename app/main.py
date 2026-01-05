@@ -339,6 +339,8 @@ def render_pretty_file(random_id, filename):
 
 @app.errorhandler(404)
 def page_not_found(e):
+    return render_template('404.html'), 404
+
 @app.route('/secret', methods=['POST'])
 @limiter.limit("10 per minute")
 def create_secret():
