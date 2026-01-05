@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   cupload:
     # TAG will be provided by environment variable during deployment
-    image: ghcr.io/formher/cupload:${TAG}
+    image: ${TAG}
     container_name: cupload
     restart: unless-stopped
     ports:
