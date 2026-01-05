@@ -23,22 +23,22 @@
                 <span class="dot green"></span>
             </div>
             <div class="terminal-body">
-                <p><span class="prompt">$</span> cat file_status.txt</p>
-                <p class="error-msg">Error: File not found.</p>
+                <p><span class="prompt">$</span> check_status.sh</p>
+                <p class="error-msg">Error: 404 Not Found.</p>
                 <br>
-                <p class="comment"># Possible reasons:</p>
+                <p class="comment"># Analysis:</p>
                 <ul class="reason-list">
-                    <li>The file was already accessed and <strong>self-destructed</strong>. 💥</li>
-                    <li>The link is incorrect or expired (24h limit). ⏳</li>
-                    <li>The file never existed. 👻</li>
+                    <li>File may have been accessed and <strong>destructed</strong>. 💥</li>
+                    <li>Link might be expired or incorrect. ⏳</li>
+                    <li>Resource does not exist. 👻</li>
                 </ul>
                 <br>
-                <p><span class="prompt">$</span> <a href="/" class="home-link">cd /home/upload_new_file</a></p>
+                <p><span class="prompt">$</span> <a href="/" class="home-link">./qurl-cli --home</a></p>
             </div>
         </div>
 
         <footer>
-            <p><a href="https://github.com/formher/cupload" target="_blank">View Source on GitHub</a></p>
+            <p>qurl.sh</p>
         </footer>
     </div>
 </body>
