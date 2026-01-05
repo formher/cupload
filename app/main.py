@@ -1,4 +1,5 @@
 from flask import Flask, request, abort, render_template, make_response, jsonify, redirect
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
 import json
@@ -23,6 +24,8 @@ cupload.io - Secure File Sharing
 
 Upload:
   curl -T file.txt https://cupload.io
+Password Protection:
+  curl -T file.txt -H "X-Password: secret" https://cupload.io
 
 Download:
   wget https://cupload.io/<id>/file.txt
@@ -50,19 +53,43 @@ def upload_file(filename):
 
     random_id = str(uuid.uuid4())[:8]
     dir_path = os.path.join(UPLOAD_FOLDER, random_id)
+    dir_path = os.path.join(UPLOAD_FOLDER, random_id)
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, filename)
+
+    # Check for password header
+    password = request.headers.get('X-Password')
+    if password:
+        meta_path = file_path + '.meta'
+        with open(meta_path, 'w') as f:
+            f.write(json.dumps({'password_hash': generate_password_hash(password)}))
+
     with open(file_path, 'wb') as f:
         f.write(request.data)
     return f"You can download your file at https://cupload.io/{random_id}/{filename}\nQR Code: https://cupload.io/qr/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
 
 
-@app.route('/<random_id>/<filename>', methods=['GET'])
+@app.route('/<random_id>/<filename>', methods=['GET', 'POST'])
 def serve_file(random_id, filename):
     dir_path = os.path.join(UPLOAD_FOLDER, random_id)
     file_path = os.path.join(dir_path, filename)
+    meta_path = file_path + '.meta'
 
     if os.path.exists(file_path):
+        # Check for Password Protection
+        if os.path.exists(meta_path):
+            with open(meta_path, 'r') as f:
+                meta = json.load(f)
+            
+            # If POST, check credentials
+            if request.method == 'POST':
+                password_input = request.form.get('password')
+                if not password_input or not check_password_hash(meta['password_hash'], password_input):
+                    return render_template('password.html', error="Invalid Password"), 401
+            # If GET, show prompt
+            else:
+                return render_template('password.html')
+
         try:
             with open(file_path, 'rb') as f:
                 file_data = f.read()
@@ -77,6 +104,8 @@ def serve_file(random_id, filename):
             def remove_file():
                 try:
                     os.remove(file_path)
+                    if os.path.exists(meta_path):
+                        os.remove(meta_path)
                     os.rmdir(dir_path)
                     app.logger.info(f"Deleted: {file_path} and {dir_path}")
                 except Exception as e:
