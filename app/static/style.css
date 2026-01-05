@@ -54,17 +54,20 @@ header {
 }
 
 h1 {
-    font-weight: 800;
-    font-size: 3.5rem;
-    letter-spacing: -0.05rem;
-    margin-bottom: 10px;
-    
-    /* Gradient Text */
-    background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+    font-weight: 900;
+    font-size: 4rem;
+    letter-spacing: -0.05em;
+    margin-bottom: 20px;
+
+    /* Triple Gradient: Purple -> Blue -> Cyan */
+    background: linear-gradient(to right, #7c3aed 0%, #2563eb 50%, #06b6d4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    
+
+    /* Glow Effect */
+    filter: drop-shadow(0 0 20px rgba(37, 99, 235, 0.3));
+
     /* Animation */
     animation: fadeUp 0.8s ease-out forwards;
     opacity: 0;
