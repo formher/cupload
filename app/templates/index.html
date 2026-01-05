@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cupload.io - Secure File Sharing</title>
+    <title>qurl.sh - Secure File Sharing</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
     <!-- Google Fonts: Inter and Fira Code -->
@@ -22,7 +22,7 @@
 
     <div class="container">
         <header>
-            <h1>cupload.io</h1>
+            <h1>qurl.sh</h1>
             <h2>Fast, ephemeral file sharing for developers</h2>
         </header>
 
@@ -38,10 +38,28 @@
                     Upload
                 </h3>
                 <p class="text-sm text-muted">Upload a file from your terminal.</p>
-                <pre><code>$ curl -T file.txt https://cupload.io
+                <pre><code>$ curl -T file.txt https://qurl.sh
 
 # With Password
-$ curl -T file.txt -H "X-Password: 123" https://cupload.io</code></pre>
+$ curl -T file.txt -H "X-Password: 123" https://qurl.sh</code></pre>
+            </div>
+
+            <!-- Download Card -->
+            <div class="card">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16M12 12V4M12 12L8 8M12 12L16 8"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            transform="rotate(180 12 12)" />
+                    </svg>
+                    Download
+                </h3>
+                <p class="text-sm text-muted">Get your file back with a simple command.</p>
+                <pre><code>$ wget https://qurl.sh/abcd/file.txt
+$ curl -O https://qurl.sh/abcd/file.txt
+# View QR
+$ open https://qurl.sh/qr/abcd/file.txt</code></pre>
             </div>
 
             <!-- Pretty Print Card -->
@@ -54,7 +72,7 @@ $ curl -T file.txt -H "X-Password: 123" https://cupload.io</code></pre>
                     Pretty Print
                 </h3>
                 <p class="text-sm text-muted">Visualize JSON, YAML, or XML configs.</p>
-                <pre><code>$ curl -F "file=@c.yaml" https://cupload.io/pretty</code></pre>
+                <pre><code>$ curl -F "file=@c.yaml" https://qurl.sh/pretty</code></pre>
             </div>
         </div>
 

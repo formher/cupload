@@ -19,24 +19,24 @@ def index():
     agent = request.user_agent.string.lower()
     if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
         return """
-cupload.io - Secure File Sharing
+qurl.sh - Secure File Sharing
 ================================
 
 Upload:
-  curl -T file.txt https://cupload.io
+  curl -T file.txt https://qurl.sh
 
   # With Password
-  curl -T file.txt -H "X-Password: secret" https://cupload.io
+  curl -T file.txt -H "X-Password: secret" https://qurl.sh
 
 Download:
-  wget https://cupload.io/<id>/file.txt
-  curl -O https://cupload.io/<id>/file.txt
+  wget https://qurl.sh/<id>/file.txt
+  curl -O https://qurl.sh/<id>/file.txt
 
 QR Code (View on phone):
-  https://cupload.io/qr/<id>/file.txt
+  https://qurl.sh/qr/<id>/file.txt
 
 Pretty Print (JSON/YAML/XML):
-  curl -F "file=@config.yaml" https://cupload.io/pretty
+  curl -F "file=@config.yaml" https://qurl.sh/pretty
 
 Note: Files auto-delete after the first download. Max 50MB.
 """
@@ -67,7 +67,7 @@ def upload_file(filename):
 
     with open(file_path, 'wb') as f:
         f.write(request.data)
-    return f"You can download your file at https://cupload.io/{random_id}/{filename}\nQR Code: https://cupload.io/qr/{random_id}/{filename}\nTry wget http://cupload.io/{random_id}/{filename}\n"
+    return f"You can download your file at https://qurl.sh/{random_id}/{filename}\nQR Code: https://qurl.sh/qr/{random_id}/{filename}\nTry wget http://qurl.sh/{random_id}/{filename}\n"
 
 
 @app.route('/<random_id>/<filename>', methods=['GET', 'POST'])
@@ -128,7 +128,7 @@ def get_qr(random_id, filename):
         abort(404)
         
     # Generate QR Code
-    url = f"https://cupload.io/{random_id}/{filename}"
+    url = f"https://qurl.sh/{random_id}/{filename}"
     img = qrcode.make(url)
     
     # Save to buffer
@@ -157,7 +157,7 @@ def upload_pretty_file():
     file_path = os.path.join(dir_path, uploaded_file.filename)
     uploaded_file.save(file_path)
 
-    return f"You can access your pretty-printed file at https://cupload.io/pretty/{random_id}/{uploaded_file.filename}\n"
+    return f"You can access your pretty-printed file at https://qurl.sh/pretty/{random_id}/{uploaded_file.filename}\n"
 
 @app.route('/pretty/<random_id>/<filename>', methods=['GET'])
 def render_pretty_file(random_id, filename):
