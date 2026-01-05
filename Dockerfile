@@ -6,11 +6,13 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY requirements.txt .
-COPY app /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+COPY app /app/app
+COPY wsgi.py /app/
 
 RUN mkdir -p /uploads
 
 EXPOSE 8080
 
-CMD ["python", "/app/main.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "wsgi:app"]
