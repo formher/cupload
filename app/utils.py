@@ -5,6 +5,10 @@ import shutil
 import uuid
 from werkzeug.security import generate_password_hash
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def parse_ttl(ttl_str):
     if not ttl_str:
         return 24 * 3600  # Default 24h
@@ -33,13 +37,13 @@ def update_meta_cleanup(file_path, dir_path, meta_path):
                     f.write(json.dumps(current_meta))
             else:
                 shutil.rmtree(dir_path)
-                # print(f"Deleted (Limits reached): {dir_path}") 
+                logger.info(f"File deleted (Limit reached): {dir_path}") 
         else:
              shutil.rmtree(dir_path)
-             # print(f"Deleted (Default): {dir_path}")
+             logger.info(f"File deleted (Default/No meta): {dir_path}")
 
     except Exception as e:
-        print(f"Cleanup failed: {e}")
+        logger.error(f"Cleanup failed for {dir_path}: {e}")
 
 def cleanup_old_files(upload_folder):
     now = time.time()
@@ -71,8 +75,9 @@ def cleanup_old_files(upload_folder):
                     if should_delete:
                         shutil.rmtree(folder_path)
                         count += 1
+                        logger.info(f"Cleanup job: Removed expired folder {folder_name}")
                 except Exception as e:
-                    print(f"Error cleaning {folder_path}: {e}") # Logger to be injected?
+                    logger.error(f"Error cleaning {folder_path}: {e}")
     
     if count > 0:
-        print(f"Cleanup: Removed {count} expired folders.")
+        logger.info(f"Cleanup job completed: Removed {count} expired folders.")

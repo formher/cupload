@@ -55,6 +55,8 @@ def upload_file(filename):
     with open(file_path, 'wb') as f:
         f.write(request.data)
         
+    current_app.logger.info(f"File uploaded: {random_id}/{filename} (Size: {content_length} bytes, TTL: {ttl_str}, Limit: {remaining_downloads}) from {request.remote_addr}")
+        
     return f"You can download your file at https://qurl.sh/{random_id}/{filename}\nQR Code: https://qurl.sh/qr/{random_id}/{filename}\nTry wget http://qurl.sh/{random_id}/{filename}\n"
 
 @files_bp.route('/<random_id>/<filename>', methods=['GET', 'POST'])
@@ -74,6 +76,7 @@ def serve_file(random_id, filename):
         # Check Expiry
         if 'expiry_time' in meta_data and time.time() > meta_data['expiry_time']:
             shutil.rmtree(dir_path, ignore_errors=True)
+            current_app.logger.info(f"File Expired (during access): {random_id}/{filename}")
             abort(404)
 
         # Check Password Protection
@@ -81,6 +84,7 @@ def serve_file(random_id, filename):
             if request.method == 'POST':
                 password_input = request.form.get('password')
                 if not password_input or not check_password_hash(meta_data['password_hash'], password_input):
+                    current_app.logger.warning(f"Failed password attempt for {random_id}/{filename} from {request.remote_addr}")
                     return render_template('password.html', error="Invalid Password"), 401
             else:
                 return render_template('password.html')
@@ -136,16 +140,10 @@ def serve_file(random_id, filename):
                         pass
                 
                 # Trigger cleanup (count as view) mechanism logic:
-                # If we render the viewer, it counts as 1 view.
-                # However, for images/pdfs, the browser will make a SECOND request with ?raw=true to fetch the img src.
-                # If limits=1, that second request would fail if we decrement here!
-                
-                # STRATEGY: 
-                # For 'code', we embed content, so we decrement here.
-                # For 'image'/'pdf', we DO NOT decrement here. We let the ?raw=true request (coming from <img> tag) handle the decrement.
-                
                 if file_type == 'code':
                     update_meta_cleanup(file_path, dir_path, meta_path)
+                    
+                current_app.logger.info(f"Viewer accessed: {random_id}/{filename} ({file_type}) by {request.remote_addr}")
 
                 return render_template('viewer.html', 
                                      filename=filename, 
@@ -188,9 +186,13 @@ def serve_file(random_id, filename):
             @response.call_on_close
             def update_or_delete():
                 update_meta_cleanup(file_path, dir_path, meta_path)
+            
+            current_app.logger.info(f"File served: {random_id}/{filename} to {request.remote_addr} (Raw/Download)")
 
             return response
         except Exception as e:
+            current_app.logger.error(f"Error serving {random_id}/{filename}: {e}")
             abort(500, f"Error serving file: {e}")
     else:
+        current_app.logger.warning(f"File not found: {random_id}/{filename} requested by {request.remote_addr}")
         abort(404)

@@ -34,6 +34,8 @@ def create_secret():
     with open(file_path, 'wb') as file:
         file.write(token)
     
+    current_app.logger.info(f"Secret created: {random_id} from {request.remote_addr}")
+    
     # Return URL with Key (Key is URL-safe base64)
     # Fernet key is bytes, need to decode for URL
     key_str = key.decode('utf-8')
@@ -48,6 +50,7 @@ def get_secret(random_id, key):
         file_path = os.path.join(dir_path, 'secret.enc')
         
         if not os.path.exists(file_path):
+            current_app.logger.warning(f"Secret not found (404): {random_id} from {request.remote_addr}")
             abort(404)
             
         # Decrypt
@@ -57,18 +60,19 @@ def get_secret(random_id, key):
                 token = file.read()
             secret_data = f.decrypt(token)
         except Exception:
+            current_app.logger.warning(f"Secret decryption failed: {random_id} from {request.remote_addr}")
             return "Invalid Key or Corrupt Data", 400
             
         # BURN IT
         try:
              shutil.rmtree(dir_path)
-             # Logging needed here
+             current_app.logger.info(f"Secret burned: {random_id} (Accessed by {request.remote_addr})")
         except Exception as e:
-            # Logging needed here
+            current_app.logger.error(f"Failed to burn secret {random_id}: {e}")
             pass
             
         return make_response(secret_data, {'Content-Type': 'text/plain'})
         
     except Exception as e:
-        # Logging needed here
+        current_app.logger.error(f"Secret error {random_id}: {e}")
         abort(404)
