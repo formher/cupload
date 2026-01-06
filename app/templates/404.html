@@ -1,45 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 Not Found - qurl.sh</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-</head>
+{% block title %}404 Not Found - qurl.sh{% endblock %}
 
-<body>
-    <div class="container">
-        <header>
-            <h1>qurl.sh</h1>
-            <p class="tagline">404: File Not Found</p>
-        </header>
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+{% endblock %}
 
-        <div class="card error-card">
-            <div class="terminal-header">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
-            </div>
-            <div class="terminal-body">
-                <p class="error-msg">Error: 404 Not Found.</p>
-                <br>
-                <p class="comment"># Analysis:</p>
-                <ul class="reason-list">
-                    <li>File may have been accessed and <strong>destructed</strong>. 💥</li>
-                    <li>Link might be expired or incorrect. ⏳</li>
-                    <li>Resource does not exist. 👻</li>
-                </ul>
-                <br>
-                <p><a href="/" class="home-link">Return to Home</a></p>
-            </div>
+{% block content %}
+<div class="container">
+    <header>
+        <h1>qurl.sh</h1>
+        <p class="tagline">404: File Not Found</p>
+    </header>
+
+    <div class="card error-card">
+        <div class="terminal-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
         </div>
-
-        <footer>
-            <p>qurl.sh</p>
-        </footer>
+        <div class="terminal-body">
+            <p class="error-msg">Error: 404 Not Found.</p>
+            <br>
+            <p class="comment"># Analysis:</p>
+            <ul class="reason-list">
+                <li>File may have been accessed and <strong>destructed</strong>. 💥</li>
+                <li>Link might be expired or incorrect. ⏳</li>
+                <li>Resource does not exist. 👻</li>
+            </ul>
+            <br>
+            <p><a href="/" class="home-link">Return to Home</a></p>
+        </div>
     </div>
-</body>
 
-</html>
+    <footer>
+        <p>qurl.sh</p>
+    </footer>
+</div>
+{% endblock %}
