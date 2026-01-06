@@ -25,6 +25,11 @@ Upload:
   # With Password
   curl -T file.txt -H "X-Password: secret" https://qurl.sh
 
+  # TTL & Limits: (Max 7d and 100 downloads))
+
+  curl -T file.txt -H "X-TTL: 1h" https://qurl.sh
+  curl -T file.txt -H "X-Downloads: 5" https://qurl.sh
+
 Download:
   wget https://qurl.sh/<id>/file.txt
   curl -O https://qurl.sh/<id>/file.txt
