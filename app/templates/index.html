@@ -1,120 +1,111 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>qurl.sh - Secure File Sharing</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+{% block title %}qurl.sh - Secure File Sharing{% endblock %}
 
-    <!-- Google Fonts: Inter and Fira Code -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;800&display=swap"
-        rel="stylesheet">
+{% block head %}
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<!-- Google Fonts: Inter and Fira Code -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;800&display=swap"
+    rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+{% block content %}
+<div class="background-effect"></div>
 
-<body>
-    <div class="background-effect"></div>
+<div class="container">
+    <header>
+        <h1>qurl.sh</h1>
+        <h2>Fast, terminal friendly ephemeral file sharing.</h2>
+        <h3>The fastest way to pipe files to the web.</h3>
+    </header>
 
-    <div class="container">
-        <header>
-            <h1>qurl.sh</h1>
-            <h2>Fast, terminal friendly ephemeral file sharing.</h2>
-            <h3>The fastest way to pipe files to the web.</h3>
-        </header>
+    <div class="grid">
+        <!-- Upload Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16M12 12V4M12 4L8 8M12 4L16 8"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Upload
+            </h3>
+            <p class="text-sm text-muted">Upload a file from your terminal.</p>
+            <pre><code>$ curl -T file.txt https://qurl.sh</code></pre>
 
-        <div class="grid">
-            <!-- Upload Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16M12 12V4M12 4L8 8M12 4L16 8"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    Upload
-                </h3>
-                <p class="text-sm text-muted">Upload a file from your terminal.</p>
-                <pre><code>$ curl -T file.txt https://qurl.sh</code></pre>
+            <p class="text-sm text-muted" style="margin-top: 20px;">With Password:</p>
+            <pre><code>$ curl -T file.txt -H "X-Password: 123" https://qurl.sh</code></pre>
 
-                <p class="text-sm text-muted" style="margin-top: 20px;">With Password:</p>
-                <pre><code>$ curl -T file.txt -H "X-Password: 123" https://qurl.sh</code></pre>
-
-                <p class="text-sm text-muted" style="margin-top: 20px;">TTL & Limits:</p>
-                <pre><code>$ curl -T file.txt -H "X-TTL: 1h" https://qurl.sh
+            <p class="text-sm text-muted" style="margin-top: 20px;">TTL & Limits:</p>
+            <pre><code>$ curl -T file.txt -H "X-TTL: 1h" https://qurl.sh
 $ curl -T file.txt -H "X-Downloads: 5" https://qurl.sh</code></pre>
-            </div>
-
-            <!-- Download Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16M12 12V4M12 12L8 8M12 12L16 8"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            transform="rotate(180 12 12)" />
-                    </svg>
-                    Download
-                </h3>
-                <p class="text-sm text-muted">Get your file back with a simple command.</p>
-                <pre><code>$ wget https://qurl.sh/abcd/file.txt
-$ curl -O https://qurl.sh/abcd/file.txt</code></pre>
-
-                <p class="text-sm text-muted" style="margin-top: 20px;">View QR:</p>
-                <pre><code>$ open https://qurl.sh/qr/abcd/file.txt</code></pre>
-            </div>
-
-            <!-- Pretty Print Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 20L14 4M4 14L2 12L4 10M20 14L22 12L20 10" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    Pretty Print
-                </h3>
-                <p class="text-sm text-muted">Visualize JSON, YAML, or XML.</p>
-                <pre><code>$ curl -F "file=@c.yaml" https://qurl.sh/pretty</code></pre>
-            </div>
-
-            <!-- Encrypted Secrets Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    Encrypted Secrets
-                </h3>
-                <p class="text-sm text-muted">Share text securely (AES-128).</p>
-                <pre><code>$ echo "secret" | curl -d @- https://qurl.sh/secret</code></pre>
-            </div>
-
-
-
-            <!-- Code Viewer Card -->
-            <div class="card">
-                <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                        <path
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    Code Viewer
-                </h3>
-                <p class="text-sm text-muted">View code with syntax highlighting.</p>
-                <p class="text-sm text-muted">Just open the file link in your <b>browser</b>.</p>
-            </div>
         </div>
 
-        <p class="note">Default: Files auto-delete after 1 download. Customize with X-TTL or X-Downloads. Max 50 MB.</p>
-    </div>
-</body>
+        <!-- Download Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16M12 12V4M12 12L8 8M12 12L16 8"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        transform="rotate(180 12 12)" />
+                </svg>
+                Download
+            </h3>
+            <p class="text-sm text-muted">Get your file back with a simple command.</p>
+            <pre><code>$ wget https://qurl.sh/abcd/file.txt
+$ curl -O https://qurl.sh/abcd/file.txt</code></pre>
 
-</html>
+            <p class="text-sm text-muted" style="margin-top: 20px;">View QR:</p>
+            <pre><code>$ open https://qurl.sh/qr/abcd/file.txt</code></pre>
+        </div>
+
+        <!-- Pretty Print Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 20L14 4M4 14L2 12L4 10M20 14L22 12L20 10" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Pretty Print
+            </h3>
+            <p class="text-sm text-muted">Visualize JSON, YAML, or XML.</p>
+            <pre><code>$ curl -F "file=@c.yaml" https://qurl.sh/pretty</code></pre>
+        </div>
+
+        <!-- Encrypted Secrets Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Encrypted Secrets
+            </h3>
+            <p class="text-sm text-muted">Share text securely (AES-128).</p>
+            <pre><code>$ echo "secret" | curl -d @- https://qurl.sh/secret</code></pre>
+        </div>
+
+        <!-- Code Viewer Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Code Viewer
+            </h3>
+            <p class="text-sm text-muted">View code with syntax highlighting.</p>
+            <p class="text-sm text-muted">Just open the file link in your <b>browser</b>.</p>
+        </div>
+    </div>
+
+    <p class="note">Default: Files auto-delete after 1 download. Customize with X-TTL or X-Downloads. Max 50 MB.</p>
+</div>
+{% endblock %}
