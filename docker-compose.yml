@@ -28,3 +28,12 @@ services:
     volumes:
       - /opt/qurl_data/certbot/conf:/etc/letsencrypt
       - /opt/qurl_data/certbot/www:/var/www/certbot
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./observability/promtail.yaml:/etc/promtail/config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped

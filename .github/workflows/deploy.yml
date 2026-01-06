@@ -66,6 +66,14 @@ jobs:
       - name: Deploy with Docker Compose
         env:
           TAG: ${{ needs.build.outputs.tags }}
+          LOKI_USER: ${{ secrets.LOKI_USER }}
+          LOKI_PASSWORD: ${{ secrets.LOKI_PASSWORD }}
+          LOKI_HOST: ${{ secrets.LOKI_HOST }}
         run: |
+          # Create .env file with secrets
+          echo "LOKI_USER=$LOKI_USER" > .env
+          echo "LOKI_PASSWORD=$LOKI_PASSWORD" >> .env
+          echo "LOKI_HOST=$LOKI_HOST" >> .env
+          
           TAG=${{ needs.build.outputs.tags }} docker compose up -d --quiet-pull
           docker compose exec nginx nginx -s reload
