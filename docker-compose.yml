@@ -4,6 +4,8 @@ services:
     image: ${TAG}
     container_name: cupload
     restart: unless-stopped
+    environment:
+      - UPLOAD_FOLDER=/uploads
     # Internal usage only
     volumes:
       - /opt/cupload/uploads:/uploads
