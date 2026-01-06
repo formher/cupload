@@ -36,9 +36,15 @@ def upload_file(filename):
     
     expiry_time = time.time() + parse_ttl(ttl_str)
     try:
-        remaining_downloads = int(downloads_str) if downloads_str else 1
+        requested_downloads = int(downloads_str) if downloads_str else 1
     except ValueError:
-        remaining_downloads = 1
+        requested_downloads = 1
+        
+    max_downloads = current_app.config.get('MAX_DOWNLOADS', 100)
+    remaining_downloads = min(requested_downloads, max_downloads)
+    
+    if requested_downloads > max_downloads:
+         current_app.logger.warning(f"Clamped downloads from {requested_downloads} to {max_downloads} for {random_id}/{filename}")
 
     meta_data = {
         'expiry_time': expiry_time,

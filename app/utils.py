@@ -9,19 +9,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from flask import current_app
+
 def parse_ttl(ttl_str):
+    max_ttl = current_app.config.get('MAX_TTL_SECONDS', 604800)
+    default_ttl = 24 * 3600
+
     if not ttl_str:
-        return 24 * 3600  # Default 24h
+        return default_ttl
     try:
         unit = ttl_str[-1].lower()
         value = int(ttl_str[:-1])
-        if unit == 's': return value
-        if unit == 'm': return value * 60
-        if unit == 'h': return value * 3600
-        if unit == 'd': return value * 86400
-        return 24 * 3600
+        if unit == 's': result = value
+        elif unit == 'm': result = value * 60
+        elif unit == 'h': result = value * 3600
+        elif unit == 'd': result = value * 86400
+        else: result = default_ttl
     except ValueError:
-        return 24 * 3600
+        result = default_ttl
+    
+    return min(result, max_ttl)
 
 def update_meta_cleanup(file_path, dir_path, meta_path):
     try:
