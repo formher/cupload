@@ -32,8 +32,14 @@ services:
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
+    # Enable env var expansion and point to custom config path to force non-default usage
+    command: -config.file=/etc/promtail/docker-config.yml -config.expand-env=true
     volumes:
-      - ./observability/promtail.yaml:/etc/promtail/config.yaml
+      - ./observability/promtail.yml:/etc/promtail/docker-config.yml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOKI_USER=${LOKI_USER}
+      - LOKI_PASSWORD=${LOKI_PASSWORD}
+      - LOKI_HOST=${LOKI_HOST}
     restart: unless-stopped
