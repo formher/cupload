@@ -4,7 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}qurl.sh{% endblock %}</title>
+    <title>{% block title %}qurl.sh - Free Terminal File Sharing & Curl Upload{% endblock %}</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description"
+        content="The fastest way to upload files from the command line. Free, ephemeral file hosting with curl. Features: Encrypted transfer, syntax highlighting, and custom TTL.">
+    <meta name="keywords"
+        content="curl upload, terminal file sharing, linux file upload, command line pastebin, ephemeral storage, encrypted secrets, devops tools, file sharing for developers">
+    <meta name="author" content="qurl.sh">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph (Facebook/LinkedIn) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://qurl.sh/">
+    <meta property="og:title" content="Upload files with `curl -T` - qurl.sh">
+    <meta property="og:description"
+        content="Pipe content directly to the web. No signup required. Secure, fast, and terminal-friendly.">
+    <!-- <meta property="og:image" content="https://qurl.sh/static/og-image.png"> -->
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="qurl.sh - Terminal File Sharing">
+    <meta name="twitter:description" content="Pipe content directly to the web using curl.">
+
+    <!-- JSON-LD Structured Data for SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "qurl.sh",
+      "operatingSystem": "Linux, macOS, Windows",
+      "applicationCategory": "DeveloperApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": "Terminal upload, Encrypted secrets, Code syntax highlighting, Custom TTL",
+      "description": "A terminal-first file sharing service designed for developers. Upload files instantly using curl, wget, or httpie."
+    }
+    </script>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-D37NSBGG3C"></script>
