@@ -56,4 +56,10 @@ def create_app(config_class=Config):
     app.register_blueprint(files_bp)
     app.register_blueprint(secrets_bp)
 
+    # Apply ProxyFix for Nginx
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
+
     return app
