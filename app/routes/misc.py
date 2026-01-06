@@ -16,7 +16,7 @@ def index():
     agent = request.user_agent.string.lower()
     if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
         return """
-qurl.sh - Secure File Sharing
+qurl.sh - Terminal friendly file sharing
 ================================
 
 Upload:
