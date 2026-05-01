@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - UPLOAD_FOLDER=/uploads
+      - SECRET_KEY=${SECRET_KEY}
     # Internal usage only
     volumes:
       - /opt/cupload/uploads:/uploads

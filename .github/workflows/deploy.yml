@@ -67,9 +67,11 @@ jobs:
         env:
           TAG: ${{ needs.build.outputs.tags }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           # Create .env file with secrets
           echo "GRAFANA_ADMIN_PASSWORD=$GRAFANA_ADMIN_PASSWORD" > .env
+          echo "SECRET_KEY=$SECRET_KEY" >> .env
 
           TAG=${{ needs.build.outputs.tags }} docker compose up -d --quiet-pull
           docker compose exec nginx nginx -s reload
