@@ -3,7 +3,7 @@ import os
 import uuid
 import shutil
 from cryptography.fernet import Fernet
-from app.extensions import limiter
+from app.extensions import limiter, uploads_total, downloads_total, expiries_total
 
 secrets_bp = Blueprint('secrets', __name__)
 
@@ -34,6 +34,7 @@ def create_secret():
     with open(file_path, 'wb') as file:
         file.write(token)
     
+    uploads_total.labels(kind='secret').inc()
     current_app.logger.info(f"Secret created: {random_id} from {request.remote_addr}")
     
     # Return URL with Key (Key is URL-safe base64)
@@ -66,11 +67,13 @@ def get_secret(random_id, key):
         # BURN IT
         try:
              shutil.rmtree(dir_path)
+             expiries_total.labels(reason='secret_burned').inc()
              current_app.logger.info(f"Secret burned: {random_id} (Accessed by {request.remote_addr})")
         except Exception as e:
             current_app.logger.error(f"Failed to burn secret {random_id}: {e}")
             pass
-            
+
+        downloads_total.labels(mode='secret').inc()
         return make_response(secret_data, {'Content-Type': 'text/plain'})
         
     except Exception as e:

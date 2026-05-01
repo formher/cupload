@@ -2,7 +2,7 @@ import logging
 import logging.config
 from flask import Flask
 from app.config import Config
-from app.extensions import limiter, scheduler
+from app.extensions import limiter, scheduler, metrics
 from app.utils import cleanup_old_files
 
 def create_app(config_class=Config):
@@ -32,6 +32,7 @@ def create_app(config_class=Config):
 
     # Initialize Extensions
     limiter.init_app(app)
+    metrics.init_app(app)
     
     # Scheduler needs explicit start, but we should clear existing jobs if re-init (rare in this pattern)
     if not scheduler.running:

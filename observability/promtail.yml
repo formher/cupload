@@ -6,7 +6,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: https://${LOKI_USER}:${LOKI_PASSWORD}@${LOKI_HOST}/loki/api/v1/push
+  - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
 - job_name: docker
@@ -15,7 +15,7 @@ scrape_configs:
     refresh_interval: 5s
     filters:
       - name: name
-        values: ["cupload", "nginx_proxy"] 
+        values: ["cupload", "nginx_proxy", "nginx", "prometheus", "grafana", "loki"]
   relabel_configs:
     - source_labels: ['__meta_docker_container_name']
       regex: '/(.*)'

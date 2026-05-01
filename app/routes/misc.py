@@ -6,7 +6,7 @@ import uuid
 import json
 import yaml
 import xml.dom.minidom
-from app.extensions import limiter
+from app.extensions import limiter, uploads_total
 from app.config import Config
 
 misc_bp = Blueprint('misc', __name__)
@@ -15,7 +15,8 @@ misc_bp = Blueprint('misc', __name__)
 def index():
     agent = request.user_agent.string.lower()
     if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
-        return """
+        max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
+        return f"""
 qurl.sh - Terminal friendly file sharing
 ================================
 
@@ -43,9 +44,10 @@ Pretty Print (JSON/YAML/XML):
 Encrypted Secrets:
   echo "secret" | curl -d @- https://qurl.sh/secret
 
-Note: Files auto-delete after the first download. Max 50MB.
+Note: Files auto-delete after the first download. Max {max_size_mb}MB.
 """
-    return render_template('index.html')
+    max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
+    return render_template('index.html', max_size_mb=max_size_mb)
 
 @misc_bp.route('/qr/<random_id>/<filename>', methods=['GET'])
 def get_qr(random_id, filename):
@@ -89,6 +91,7 @@ def upload_pretty_file():
     file_path = os.path.join(dir_path, uploaded_file.filename)
     uploaded_file.save(file_path)
 
+    uploads_total.labels(kind='pretty').inc()
     return f"You can access your pretty-printed file at https://qurl.sh/pretty/{random_id}/{uploaded_file.filename}\n"
 
 @misc_bp.route('/pretty/<random_id>/<filename>', methods=['GET'])

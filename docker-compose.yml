@@ -29,17 +29,63 @@ services:
       - /opt/qurl_data/certbot/conf:/etc/letsencrypt
       - /opt/qurl_data/certbot/www:/var/www/certbot
 
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    restart: unless-stopped
+
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
-    # Enable env var expansion and point to custom config path to force non-default usage
-    command: -config.file=/etc/promtail/docker-config.yml -config.expand-env=true
+    command: -config.file=/etc/promtail/docker-config.yml
     volumes:
       - ./observability/promtail.yml:/etc/promtail/docker-config.yml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - LOKI_USER=${LOKI_USER}
-      - LOKI_PASSWORD=${LOKI_PASSWORD}
-      - LOKI_HOST=${LOKI_HOST}
+    depends_on:
+      - loki
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=60d'   # 2 months
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    # Bind to localhost only — reach it via SSH tunnel:
+    #   ssh -L 3000:127.0.0.1:3000 user@host
+    # Switch to "3000:3000" or front it with nginx + auth to expose publicly.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  loki_data:
+  prometheus_data:
+  grafana_data:

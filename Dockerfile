@@ -15,4 +15,4 @@ RUN mkdir -p /uploads
 
 EXPOSE 8080
 
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "wsgi:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--timeout", "600", "wsgi:app"]

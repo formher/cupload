@@ -4,9 +4,25 @@ import uuid
 import json
 import shutil
 import time
+import markdown as md
+import bleach
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.extensions import limiter
+from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
 from app.utils import parse_ttl, update_meta_cleanup
+
+MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
+    'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'br', 'hr', 'span', 'div', 'img', 'table', 'thead', 'tbody',
+    'tr', 'th', 'td', 'del', 'sub', 'sup'
+]
+MARKDOWN_ALLOWED_ATTRS = {
+    **bleach.sanitizer.ALLOWED_ATTRIBUTES,
+    'img': ['src', 'alt', 'title'],
+    'a': ['href', 'title', 'rel'],
+    'code': ['class'],
+    'span': ['class'],
+    'div': ['class'],
+}
 
 files_bp = Blueprint('files', __name__)
 
@@ -14,13 +30,14 @@ files_bp = Blueprint('files', __name__)
 @limiter.limit("10 per minute")
 def upload_file(filename):
     max_size = current_app.config['MAX_CONTENT_LENGTH']
+    max_size_mb = max_size // (1024 * 1024)
     upload_folder = current_app.config['UPLOAD_FOLDER']
 
     content_length = request.content_length
     if content_length is None:
         return "Missing Content-Length header.\n", 411  # Length Required
     if content_length > max_size:
-        return "File too large. Max allowed size is 50MB.\n", 413  # Payload Too Large
+        return f"File too large. Max allowed size is {max_size_mb}MB.\n", 413  # Payload Too Large
 
     random_id = str(uuid.uuid4())[:8]
     dir_path = os.path.join(upload_folder, random_id)
@@ -58,10 +75,28 @@ def upload_file(filename):
     with open(meta_path, 'w') as f:
         f.write(json.dumps(meta_data))
 
-    with open(file_path, 'wb') as f:
-        f.write(request.data)
-        
-    current_app.logger.info(f"File uploaded: {random_id}/{filename} (Size: {content_length} bytes, TTL: {ttl_str}, Limit: {remaining_downloads}) from {request.remote_addr}")
+    bytes_written = 0
+    chunk_size = 64 * 1024
+    try:
+        with open(file_path, 'wb') as f:
+            while True:
+                chunk = request.stream.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                if bytes_written > max_size:
+                    f.close()
+                    shutil.rmtree(dir_path, ignore_errors=True)
+                    return f"File too large. Max allowed size is {max_size_mb}MB.\n", 413
+                f.write(chunk)
+    except Exception as e:
+        shutil.rmtree(dir_path, ignore_errors=True)
+        current_app.logger.error(f"Upload failed for {random_id}/{filename}: {e}")
+        return "Upload failed.\n", 500
+
+    uploads_total.labels(kind='file').inc()
+    upload_bytes.observe(bytes_written)
+    current_app.logger.info(f"File uploaded: {random_id}/{filename} (Size: {bytes_written} bytes, TTL: {ttl_str}, Limit: {remaining_downloads}) from {request.remote_addr}")
         
     return f"You can download your file at https://qurl.sh/{random_id}/{filename}\nQR Code: https://qurl.sh/qr/{random_id}/{filename}\nTry wget http://qurl.sh/{random_id}/{filename}\n"
 
@@ -82,6 +117,7 @@ def serve_file(random_id, filename):
         # Check Expiry
         if 'expiry_time' in meta_data and time.time() > meta_data['expiry_time']:
             shutil.rmtree(dir_path, ignore_errors=True)
+            expiries_total.labels(reason='ttl').inc()
             current_app.logger.info(f"File Expired (during access): {random_id}/{filename}")
             abort(404)
 
@@ -105,55 +141,75 @@ def serve_file(random_id, filename):
             
             # Categories
             code_exts = [
-                '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml', 
-                '.sh', '.md', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb', 
+                '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml',
+                '.sh', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb',
                 '.php', '.sql', '.xml', '.log', '.ini', '.conf'
             ]
+            markdown_exts = ['.md', '.markdown']
             image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
             pdf_exts = ['.pdf']
-            
-            supported_exts = code_exts + image_exts + pdf_exts
-            
+
+            supported_exts = code_exts + markdown_exts + image_exts + pdf_exts
+
             if not is_cli and not is_raw and ext in supported_exts:
                 # Use raw=true in template for media src
-                
+
                 # Determine Type
                 file_type = 'code'
-                if ext in image_exts:
+                if ext in markdown_exts:
+                    file_type = 'markdown'
+                elif ext in image_exts:
                     file_type = 'image'
                 elif ext in pdf_exts:
                     file_type = 'pdf'
-                
-                # For code, read content. For media, we handle in template via src
+
+                # For code/markdown, read content. For media, we handle in template via src
                 file_content = ""
+                raw_content = ""
                 lang = "none"
-                
-                if file_type == 'code':
+
+                if file_type in ('code', 'markdown'):
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
-                            file_content = f.read()
-                        
-                        lang_map = {
-                            '.py': 'python', '.js': 'javascript', '.sh': 'bash', 
-                            '.md': 'markdown', '.go': 'go', '.rs': 'rust',
-                            '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
-                            '.html': 'html', '.css': 'css', '.sql': 'sql',
-                            '.java': 'java', '.c': 'c', '.cpp': 'cpp'
-                        }
-                        lang = lang_map.get(ext, 'none')
+                            raw_content = f.read()
+                        file_content = raw_content
+
+                        if file_type == 'code':
+                            lang_map = {
+                                '.py': 'python', '.js': 'javascript', '.sh': 'bash',
+                                '.go': 'go', '.rs': 'rust',
+                                '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
+                                '.html': 'html', '.css': 'css', '.sql': 'sql',
+                                '.java': 'java', '.c': 'c', '.cpp': 'cpp'
+                            }
+                            lang = lang_map.get(ext, 'none')
+                        else:
+                            rendered = md.markdown(
+                                raw_content,
+                                extensions=['fenced_code', 'tables', 'toc', 'sane_lists', 'codehilite'],
+                                output_format='html5'
+                            )
+                            file_content = bleach.clean(
+                                rendered,
+                                tags=MARKDOWN_ALLOWED_TAGS,
+                                attributes=MARKDOWN_ALLOWED_ATTRS,
+                                strip=True
+                            )
                     except UnicodeDecodeError:
                         # Fallback if binary detected in text ext
                         pass
-                
+
                 # Trigger cleanup (count as view) mechanism logic:
-                if file_type == 'code':
+                if file_type in ('code', 'markdown'):
                     update_meta_cleanup(file_path, dir_path, meta_path)
-                    
+
+                downloads_total.labels(mode='viewer').inc()
                 current_app.logger.info(f"Viewer accessed: {random_id}/{filename} ({file_type}) by {request.remote_addr}")
 
-                return render_template('viewer.html', 
-                                     filename=filename, 
-                                     content=file_content, 
+                return render_template('viewer.html',
+                                     filename=filename,
+                                     content=file_content,
+                                     raw_content=raw_content,
                                      language=lang,
                                      file_type=file_type)
 
@@ -193,6 +249,7 @@ def serve_file(random_id, filename):
             def update_or_delete():
                 update_meta_cleanup(file_path, dir_path, meta_path)
             
+            downloads_total.labels(mode='raw').inc()
             current_app.logger.info(f"File served: {random_id}/{filename} to {request.remote_addr} (Raw/Download)")
 
             return response

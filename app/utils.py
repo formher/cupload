@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from flask import current_app
+from app.extensions import expiries_total
 
 def parse_ttl(ttl_str):
     max_ttl = current_app.config.get('MAX_TTL_SECONDS', 604800)
@@ -44,9 +45,11 @@ def update_meta_cleanup(file_path, dir_path, meta_path):
                     f.write(json.dumps(current_meta))
             else:
                 shutil.rmtree(dir_path)
-                logger.info(f"File deleted (Limit reached): {dir_path}") 
+                expiries_total.labels(reason='downloads_exhausted').inc()
+                logger.info(f"File deleted (Limit reached): {dir_path}")
         else:
              shutil.rmtree(dir_path)
+             expiries_total.labels(reason='downloads_exhausted').inc()
              logger.info(f"File deleted (Default/No meta): {dir_path}")
 
     except Exception as e:
@@ -81,6 +84,7 @@ def cleanup_old_files(upload_folder):
 
                     if should_delete:
                         shutil.rmtree(folder_path)
+                        expiries_total.labels(reason='sweep').inc()
                         count += 1
                         logger.info(f"Cleanup job: Removed expired folder {folder_name}")
                 except Exception as e:

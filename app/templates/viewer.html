@@ -54,6 +54,59 @@ margin: 0 !important;
 padding: 0 !important;
 border: none !important;
 }
+
+.markdown-body {
+color: #e2e8f0;
+line-height: 1.6;
+font-size: 1rem;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+color: #fff;
+margin-top: 1.4em;
+margin-bottom: 0.5em;
+}
+
+.markdown-body h1 { border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.3em; }
+.markdown-body h2 { border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.2em; }
+
+.markdown-body a { color: #38bdf8; }
+.markdown-body code {
+background: rgba(255,255,255,0.08);
+padding: 0.15em 0.4em;
+border-radius: 4px;
+font-family: var(--font-mono);
+font-size: 0.9em;
+}
+.markdown-body pre {
+background: rgba(0,0,0,0.4) !important;
+padding: 1em !important;
+border-radius: 6px;
+overflow-x: auto;
+}
+.markdown-body pre code {
+background: transparent;
+padding: 0;
+}
+.markdown-body blockquote {
+border-left: 3px solid #38bdf8;
+padding-left: 1em;
+color: #94a3b8;
+margin: 1em 0;
+}
+.markdown-body table {
+border-collapse: collapse;
+margin: 1em 0;
+}
+.markdown-body th,
+.markdown-body td {
+border: 1px solid rgba(255,255,255,0.1);
+padding: 0.4em 0.8em;
+}
+.markdown-body img { max-width: 100%; border-radius: 6px; }
 {% endblock %}
 
 {% block content %}
@@ -73,6 +126,9 @@ border: none !important;
         {% if file_type == 'code' %}
         <textarea id="rawContent" style="display:none;">{{ content }}</textarea>
         <pre><code class="language-{{ language }}">{{ content }}</code></pre>
+        {% elif file_type == 'markdown' %}
+        <textarea id="rawContent" style="display:none;">{{ raw_content }}</textarea>
+        <div class="markdown-body">{{ content|safe }}</div>
         {% elif file_type == 'image' %}
         <div style="text-align: center;">
             <img src="?raw=true" alt="{{ filename }}" style="max-width: 100%; border-radius: 8px;">

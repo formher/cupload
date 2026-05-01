@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: cupload
+
+scrape_configs:
+  - job_name: cupload
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['cupload:8080']
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
