@@ -4,6 +4,7 @@
 
 {% block head %}
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="canonical" href="https://qurl.sh/">
 <!-- Google Fonts: Inter and Fira Code -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,5 +108,10 @@ $ curl -O https://qurl.sh/abcd/file.txt</code></pre>
     </div>
 
     <p class="note">Default: Files auto-delete after 1 download. Customize with X-TTL or X-Downloads. Max {{ max_size_mb }} MB.</p>
+    <p class="note">
+        No signup, no API key, nothing to install.
+        Read the <a href="/docs">full documentation</a> &mdash;
+        or <code>curl https://qurl.sh</code> for help in your shell.
+    </p>
 </div>
 {% endblock %}

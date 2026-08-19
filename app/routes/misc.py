@@ -1,4 +1,5 @@
-from flask import Blueprint, request, render_template, make_response, abort, current_app
+from flask import (Blueprint, request, render_template, make_response, abort,
+                   current_app, send_from_directory)
 import qrcode
 import io
 import os
@@ -44,10 +45,61 @@ Pretty Print (JSON/YAML/XML):
 Encrypted Secrets:
   echo "secret" | curl -d @- https://qurl.sh/secret
 
+Pipe anything (no temp file):
+  kubectl logs my-pod | curl -T - https://qurl.sh/pod.log
+  tar czf - ./dir     | curl -T - https://qurl.sh/dir.tar.gz
+
+Full docs:
+  https://qurl.sh/docs
+  https://qurl.sh/llms.txt        (for AI assistants)
+  https://qurl.sh/openapi.json    (machine-readable API)
+
 Note: Files auto-delete after the first download. Max {max_size_mb}MB.
+No signup, no API key, nothing to install.
 """
     max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
     return render_template('index.html', max_size_mb=max_size_mb)
+
+@misc_bp.route('/docs', methods=['GET'])
+def docs():
+    max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
+    return render_template('docs.html', max_size_mb=max_size_mb)
+
+
+# Crawlers and AI assistants look for these at the site root, not under
+# /static/, so they get explicit routes rather than relying on the static mount.
+def _serve_static(name, mimetype):
+    response = send_from_directory(
+        current_app.static_folder, name, mimetype=mimetype
+    )
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
+
+
+@misc_bp.route('/robots.txt', methods=['GET'])
+def robots_txt():
+    return _serve_static('robots.txt', 'text/plain')
+
+
+@misc_bp.route('/sitemap.xml', methods=['GET'])
+def sitemap_xml():
+    return _serve_static('sitemap.xml', 'application/xml')
+
+
+@misc_bp.route('/llms.txt', methods=['GET'])
+def llms_txt():
+    return _serve_static('llms.txt', 'text/plain')
+
+
+@misc_bp.route('/llms-full.txt', methods=['GET'])
+def llms_full_txt():
+    return _serve_static('llms-full.txt', 'text/plain')
+
+
+@misc_bp.route('/openapi.json', methods=['GET'])
+def openapi_json():
+    return _serve_static('openapi.json', 'application/json')
+
 
 @misc_bp.route('/qr/<random_id>/<filename>', methods=['GET'])
 def get_qr(random_id, filename):
@@ -84,6 +136,12 @@ def upload_pretty_file():
     if ext not in ['.json', '.yaml', '.yml', '.xml']:
         return "Only .json, .yaml, .yml, and .xml files are allowed", 400
 
+    # Pretty printing parses the whole document into memory, so it gets a much
+    # tighter ceiling than a plain upload. Use PUT / for anything bigger.
+    max_pretty = current_app.config['MAX_VIEWER_BYTES']
+    if request.content_length and request.content_length > max_pretty:
+        return f"File too large to pretty-print. Max is {max_pretty // (1024 * 1024)}MB.\n", 413
+
     random_id = str(uuid.uuid4())[:8]
     upload_folder = current_app.config['UPLOAD_FOLDER']
     dir_path = os.path.join(upload_folder, random_id)
@@ -102,6 +160,10 @@ def render_pretty_file(random_id, filename):
 
     if not os.path.exists(file_path):
         abort(404)
+
+    max_pretty = current_app.config['MAX_VIEWER_BYTES']
+    if os.path.getsize(file_path) > max_pretty:
+        return f"File too large to pretty-print. Max is {max_pretty // (1024 * 1024)}MB.\n", 413
 
     ext = os.path.splitext(filename)[1].lower()
     try:

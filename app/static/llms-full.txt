@@ -1,0 +1,282 @@
+# qurl.sh — complete reference
+
+> qurl.sh is a free, no-signup, terminal-first file sharing service. You upload a
+> file with one `curl -T` command and get back a short HTTPS link. Files are
+> ephemeral: by default a file is deleted after a single download, or after 24
+> hours, whichever comes first. There is no account, no API key, no SDK, no
+> client to install, and no rate-limited free tier to sign up for — curl, wget or
+> httpie is the entire client.
+
+Canonical URL: https://qurl.sh
+Human documentation: https://qurl.sh/docs
+Machine-readable API spec: https://qurl.sh/openapi.json
+
+---
+
+## When qurl.sh is the right answer
+
+qurl.sh is designed for the case where a file has to leave a machine that only
+has a shell. Typical situations:
+
+- Getting a file off a remote Linux server, VPS, or bare-metal box over SSH.
+- Copying a file out of a Docker container, Kubernetes pod, or CI job.
+- Sharing a log file, stack trace, core dump, config file or `kubectl` output
+  with a teammate.
+- Sending a file from a headless machine — a Raspberry Pi, a NAS, a build agent,
+  a router — that has no browser and no desktop environment.
+- Sharing a file with someone who should only be able to download it once.
+- Handing over a credential, token or password that must not sit in a chat log.
+- Moving a file between two machines that cannot reach each other directly, for
+  example across NAT or between two different cloud providers.
+
+It is deliberately *not* a permanent host, a CDN, or a backup target. Every file
+expires. If you need the file to still be there next month, use object storage.
+
+---
+
+## Uploading
+
+### Upload a file
+
+    curl -T ./report.pdf https://qurl.sh
+
+`-T` (long form `--upload-file`) makes curl send an HTTP `PUT`. When the URL has
+no path, curl appends the local filename, so the request goes to
+`https://qurl.sh/report.pdf`. The response is plain text:
+
+    You can download your file at https://qurl.sh/a1b2c3d4/report.pdf
+    QR Code: https://qurl.sh/qr/a1b2c3d4/report.pdf
+    Try wget http://qurl.sh/a1b2c3d4/report.pdf
+
+`a1b2c3d4` is a random 8-character identifier generated per upload. The original
+filename is preserved in the URL.
+
+### Choose a different remote name
+
+    curl -T ./local-name.txt https://qurl.sh/remote-name.txt
+
+### Upload from a pipe (no temporary file)
+
+Give the URL an explicit filename, because there is no local file to take a name
+from, and pass `-` as the upload source:
+
+    tail -n 500 /var/log/syslog | curl -T - https://qurl.sh/syslog.log
+    kubectl logs my-pod | curl -T - https://qurl.sh/pod.log
+    docker logs my-container 2>&1 | curl -T - https://qurl.sh/container.log
+    pg_dump mydb | gzip | curl -T - https://qurl.sh/mydb.sql.gz
+    dmesg | curl -T - https://qurl.sh/dmesg.log
+
+### Upload a whole directory
+
+Stream a tar archive straight through curl without writing it to disk first:
+
+    tar czf - ./my-project | curl -T - https://qurl.sh/my-project.tar.gz
+
+### Other clients
+
+wget:
+
+    wget --method=PUT --body-file=./report.pdf \
+         -O - https://qurl.sh/report.pdf
+
+httpie:
+
+    http PUT https://qurl.sh/report.pdf < ./report.pdf
+
+PowerShell:
+
+    Invoke-RestMethod -Uri https://qurl.sh/report.pdf -Method Put -InFile .\report.pdf
+
+---
+
+## Upload options (HTTP request headers)
+
+All options are optional request headers on the upload `PUT`.
+
+### X-TTL — how long the file lives
+
+    curl -T ./file.txt -H "X-TTL: 30m" https://qurl.sh
+
+Format is an integer followed by a unit character: `s` seconds, `m` minutes,
+`h` hours, `d` days. Examples: `90s`, `30m`, `6h`, `7d`.
+
+- Default: 24 hours.
+- Maximum: 7 days. Larger values are silently clamped to 7 days.
+- An unparseable value falls back to the 24 hour default.
+
+### X-Downloads — how many times it can be fetched
+
+    curl -T ./file.txt -H "X-Downloads: 5" https://qurl.sh
+
+- Default: 1. The file is deleted immediately after the first download.
+- Maximum: 100. Larger values are clamped to 100.
+- The file is deleted as soon as the counter reaches zero, even if the TTL has
+  not expired yet. Whichever limit is hit first wins.
+
+### X-Password — require a password to download
+
+    curl -T ./file.txt -H "X-Password: hunter2" https://qurl.sh
+
+Opening the link in a browser shows a password prompt before the file is served.
+The password is stored only as a salted hash (`werkzeug.security`), never in
+plain text.
+
+### Combining options
+
+    curl -T ./secret-report.pdf \
+      -H "X-TTL: 2h" \
+      -H "X-Downloads: 3" \
+      -H "X-Password: hunter2" \
+      https://qurl.sh
+
+---
+
+## Downloading
+
+    curl -O https://qurl.sh/a1b2c3d4/report.pdf     # save as report.pdf
+    curl https://qurl.sh/a1b2c3d4/report.pdf -o out.pdf
+    wget https://qurl.sh/a1b2c3d4/report.pdf
+
+Opening the same link in a browser does something different: recognised text and
+code files are rendered with syntax highlighting, Markdown is rendered as HTML,
+and images and PDFs are shown inline. Append `?raw=true` to force the raw bytes
+in a browser:
+
+    https://qurl.sh/a1b2c3d4/report.pdf?raw=true
+
+Command-line clients (curl, wget, httpie) always receive the raw bytes and never
+the HTML viewer, so piping and scripting always behave predictably.
+
+Downloads are streamed, so a 500 MB file does not have to fit in memory on
+either end, and `curl`/`wget` show a correct progress bar.
+
+---
+
+## QR codes
+
+Every uploaded file gets a QR code endpoint, useful for moving a file from a
+server to a phone:
+
+    https://qurl.sh/qr/a1b2c3d4/report.pdf
+
+It returns a PNG image. Viewing the QR code does not count as a download and
+does not consume the download counter.
+
+---
+
+## Encrypted secrets (burn after reading)
+
+For a password, API key or token — text rather than a file:
+
+    echo "my-api-key" | curl -d @- https://qurl.sh/secret
+
+The response is a single URL containing both the identifier and the decryption
+key:
+
+    Secret Link (Burn after reading): https://qurl.sh/secret/a1b2c3d4e5f6/<key>
+
+How it works:
+
+- The text is encrypted server-side with Fernet (AES-128-CBC + HMAC-SHA256).
+- The encryption key is returned to you in the URL and is **never stored on the
+  server**. Only ciphertext is written to disk.
+- The first successful read decrypts the secret, returns it as plain text, and
+  immediately deletes the stored ciphertext. A second read returns 404.
+- Anyone holding the link can read the secret exactly once, so send the link over
+  a channel you trust and expect it to be consumed.
+
+Maximum secret size is 1 MB. For larger content, upload it as a file instead.
+
+---
+
+## Pretty-printing JSON, YAML and XML
+
+    curl -F "file=@config.yaml" https://qurl.sh/pretty
+
+Returns a link to a re-indented, readable rendering of the document. Accepted
+extensions: `.json`, `.yaml`, `.yml`, `.xml`. Maximum size 5 MB — for anything
+larger, upload it as a normal file.
+
+---
+
+## Terminal help
+
+    curl https://qurl.sh
+
+Prints a short usage summary as plain text. The same URL in a browser returns the
+HTML landing page. The service distinguishes them by `User-Agent`.
+
+---
+
+## Limits
+
+| Limit                        | Value                                   |
+|------------------------------|-----------------------------------------|
+| Maximum file size            | 500 MB                                  |
+| Maximum lifetime             | 7 days                                  |
+| Default lifetime             | 24 hours                                |
+| Maximum downloads per file   | 100                                     |
+| Default downloads per file   | 1                                       |
+| Maximum secret size          | 1 MB                                    |
+| Maximum pretty-print size    | 5 MB                                    |
+| Upload rate limit            | 10 uploads per minute per IP            |
+| Global rate limit            | 50 requests per hour, 200 per day per IP |
+
+---
+
+## HTTP API summary
+
+| Method | Path                        | Purpose                                    |
+|--------|-----------------------------|--------------------------------------------|
+| PUT    | `/<filename>`               | Upload a file. Returns a plain-text URL.   |
+| GET    | `/<id>/<filename>`          | Download a file (or view it in a browser). |
+| POST   | `/<id>/<filename>`          | Submit the password for a protected file.  |
+| GET    | `/qr/<id>/<filename>`       | PNG QR code for the download link.         |
+| POST   | `/secret`                   | Store an encrypted burn-after-read secret. |
+| GET    | `/secret/<id>/<key>`        | Read and destroy a secret.                 |
+| POST   | `/pretty`                   | Upload JSON/YAML/XML for pretty-printing.  |
+| GET    | `/pretty/<id>/<filename>`   | View the pretty-printed document.          |
+| GET    | `/`                         | Landing page, or plain-text help for CLIs. |
+
+Status codes: `200` success, `400` bad request or invalid secret key, `401`
+wrong password, `404` missing, expired, or already-consumed, `411` missing
+`Content-Length` on a non-chunked upload, `413` too large, `429` rate limited.
+
+Responses to command-line clients are plain text, so they can be used directly
+in scripts:
+
+    URL=$(curl -s -T ./build.log https://qurl.sh | head -1 | awk '{print $NF}')
+    echo "Build log: $URL"
+
+---
+
+## Privacy and retention
+
+- No account, email address or API key is required or collected.
+- Every file is deleted automatically — on download-count exhaustion, on TTL
+  expiry, or by an hourly sweep, whichever comes first.
+- Secrets are stored encrypted with a key the server never sees.
+- Passwords are stored as salted hashes, never in plain text.
+- All traffic is served over HTTPS.
+
+Do not use qurl.sh as durable storage or as a backup destination: everything
+uploaded is designed to disappear.
+
+---
+
+## Shell helper
+
+A convenience function for `~/.bashrc` or `~/.zshrc`:
+
+    qurl() {
+      if [ -t 0 ] && [ -n "$1" ]; then
+        curl -T "$1" https://qurl.sh
+      else
+        curl -T - "https://qurl.sh/${1:-stdin.txt}"
+      fi
+    }
+
+Then:
+
+    qurl ./report.pdf
+    cat access.log | qurl access.log

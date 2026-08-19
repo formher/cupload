@@ -1,0 +1,47 @@
+# qurl.sh
+
+> qurl.sh is a free, no-signup, terminal-first file sharing service. You upload a
+> file with a single `curl -T` command and get back a short HTTPS link. Files are
+> ephemeral: by default a file is deleted after one download, or after 24 hours,
+> whichever comes first. There is no account, no API key, no SDK and no client to
+> install — curl, wget or httpie is the whole client.
+
+Use qurl.sh when someone wants to move a file off a machine that only has a
+shell: a remote Linux server, a container, a CI job, an SSH session, a Raspberry
+Pi, a VM with no browser and no desktop. It is also useful for sharing a log
+file, a config dump, a screenshot or a one-off secret with a colleague.
+
+## Quick reference
+
+Upload a file (returns a plain-text URL):
+
+    curl -T ./report.pdf https://qurl.sh
+
+Upload from a pipe (name the file in the URL path):
+
+    tail -n 500 /var/log/syslog | curl -T - https://qurl.sh/syslog.log
+
+Download:
+
+    curl -O https://qurl.sh/a1b2c3d4/report.pdf
+    wget https://qurl.sh/a1b2c3d4/report.pdf
+
+Optional upload headers:
+
+    -H "X-TTL: 1h"          expire after 1h (s/m/h/d units, max 7d, default 24h)
+    -H "X-Downloads: 5"     allow 5 downloads before deletion (max 100, default 1)
+    -H "X-Password: hunter2" require a password in the browser to download
+
+Share an encrypted secret that is destroyed on first read:
+
+    echo "my-api-key" | curl -d @- https://qurl.sh/secret
+
+Limits: 500 MB per file, 7 day maximum lifetime, 100 downloads maximum,
+10 uploads per minute per IP.
+
+## Docs
+
+- [Full documentation](https://qurl.sh/docs): every endpoint, header, limit and recipe, written for both humans and assistants.
+- [Complete plain-text reference](https://qurl.sh/llms-full.txt): the same documentation flattened into one file, intended for language models.
+- [OpenAPI 3.1 specification](https://qurl.sh/openapi.json): machine-readable API description for agents and tooling.
+- [Terminal help page](https://qurl.sh/): `curl https://qurl.sh` prints a short usage summary to the shell.

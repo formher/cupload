@@ -1,7 +1,87 @@
+# qurl.sh — terminal-first ephemeral file sharing
+# Docs for humans:  https://qurl.sh/docs
+# Docs for LLMs:    https://qurl.sh/llms.txt  (full: https://qurl.sh/llms-full.txt)
+# Machine API spec: https://qurl.sh/openapi.json
+
 User-agent: *
 Allow: /
 Allow: /docs
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /openapi.json
 Disallow: /admin
 Disallow: /secret/
+Disallow: /pretty/
+Disallow: /qr/
 
-Sitemap: https://qurl.sh/static/sitemap.xml
+# AI assistants and their crawlers are explicitly welcome to read and cite
+# the documentation. Uploaded user content is excluded above.
+User-agent: GPTBot
+Allow: /
+Disallow: /secret/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /secret/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /secret/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /secret/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /secret/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /secret/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /secret/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /secret/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /secret/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /secret/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /secret/
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /secret/
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /secret/
+
+User-agent: CCBot
+Allow: /
+Disallow: /secret/
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /secret/
+
+User-agent: DuckAssistBot
+Allow: /
+Disallow: /secret/
+
+User-agent: MistralAI-User
+Allow: /
+Disallow: /secret/
+
+Sitemap: https://qurl.sh/sitemap.xml

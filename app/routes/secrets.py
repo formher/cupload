@@ -12,10 +12,18 @@ secrets_bp = Blueprint('secrets', __name__)
 def create_secret():
     upload_folder = current_app.config['UPLOAD_FOLDER']
 
+    # Secrets are encrypted in memory, so they get their own small ceiling
+    # rather than the 500MB one that applies to file uploads.
+    max_secret = current_app.config['MAX_SECRET_BYTES']
+    if request.content_length and request.content_length > max_secret:
+        return f"Secret too large. Max is {max_secret // 1024}KB.\n", 413
+
     # Read raw text or form data
     data = request.get_data()
     if not data:
         return "No content provided\n", 400
+    if len(data) > max_secret:
+        return f"Secret too large. Max is {max_secret // 1024}KB.\n", 413
         
     # Generate Key and encryption suite
     # We use Fernet (AES-128 CBC + HMAC) for simplicity and safety

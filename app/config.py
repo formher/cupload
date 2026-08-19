@@ -8,3 +8,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change'
     MAX_TTL_SECONDS = 604800  # 7 days
     MAX_DOWNLOADS = 100
+    # Ceilings for the paths that must read a whole file into memory to
+    # render it (the code/markdown viewer, the pretty printer) or to encrypt
+    # it. Anything larger is streamed or rejected instead.
+    MAX_VIEWER_BYTES = 5 * 1024 * 1024      # 5 MB
+    MAX_SECRET_BYTES = 1024 * 1024          # 1 MB

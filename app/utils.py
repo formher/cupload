@@ -31,6 +31,25 @@ def parse_ttl(ttl_str):
     
     return min(result, max_ttl)
 
+def stream_and_cleanup(file_path, dir_path, meta_path, chunk_size=64 * 1024):
+    """Yield a file in chunks, then run the download-counter cleanup.
+
+    Reading a 500MB upload with f.read() costs 500MB of RSS per concurrent
+    download, so the response body is generated lazily instead. The cleanup
+    lives in a finally block so an aborted download still decrements the
+    counter, matching the behaviour of the call_on_close hook it replaced.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+    finally:
+        update_meta_cleanup(file_path, dir_path, meta_path)
+
+
 def update_meta_cleanup(file_path, dir_path, meta_path):
     try:
         if os.path.exists(meta_path):

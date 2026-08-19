@@ -1,0 +1,244 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "qurl.sh",
+    "version": "1.0.0",
+    "summary": "No-signup ephemeral file sharing from the terminal.",
+    "description": "qurl.sh uploads a file with a single `curl -T` command and returns a short HTTPS link. Files are ephemeral: by default a file is deleted after one download or after 24 hours, whichever comes first. No account, API key or client library is required.",
+    "contact": { "url": "https://qurl.sh/docs" }
+  },
+  "servers": [{ "url": "https://qurl.sh" }],
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getHelp",
+        "summary": "Landing page, or plain-text usage help for command-line clients.",
+        "description": "Returns an HTML page for browsers and a plain-text usage summary when the User-Agent looks like curl, wget or httpie.",
+        "responses": {
+          "200": {
+            "description": "Usage help.",
+            "content": {
+              "text/plain": { "schema": { "type": "string" } },
+              "text/html": { "schema": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "/{filename}": {
+      "put": {
+        "operationId": "uploadFile",
+        "summary": "Upload a file.",
+        "description": "Uploads the request body and returns a plain-text message containing the download URL. Equivalent to `curl -T ./file.txt https://qurl.sh`. Chunked uploads without a Content-Length are accepted, which is what makes piping (`... | curl -T - https://qurl.sh/name.log`) work.",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "Name the file should be stored and served under.",
+            "schema": { "type": "string" },
+            "example": "report.pdf"
+          },
+          {
+            "name": "X-TTL",
+            "in": "header",
+            "required": false,
+            "description": "Lifetime as an integer plus a unit character: s, m, h or d. Defaults to 24h, clamped to a maximum of 7d.",
+            "schema": { "type": "string", "pattern": "^[0-9]+[smhd]$" },
+            "example": "1h"
+          },
+          {
+            "name": "X-Downloads",
+            "in": "header",
+            "required": false,
+            "description": "Number of downloads allowed before the file is deleted. Defaults to 1, clamped to a maximum of 100.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
+            "example": 5
+          },
+          {
+            "name": "X-Password",
+            "in": "header",
+            "required": false,
+            "description": "Require this password before the file can be downloaded in a browser. Stored as a salted hash.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload accepted. The body contains the download URL, the QR code URL and a wget example.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "You can download your file at https://qurl.sh/a1b2c3d4/report.pdf\nQR Code: https://qurl.sh/qr/a1b2c3d4/report.pdf\nTry wget http://qurl.sh/a1b2c3d4/report.pdf\n"
+              }
+            }
+          },
+          "411": { "description": "No Content-Length on a request whose body length cannot be determined." },
+          "413": { "description": "File exceeds the 500 MB limit." },
+          "429": { "description": "Rate limit exceeded (10 uploads per minute per IP)." },
+          "500": { "description": "Upload failed; any partial data is discarded." }
+        }
+      }
+    },
+    "/{id}/{filename}": {
+      "get": {
+        "operationId": "downloadFile",
+        "summary": "Download a file.",
+        "description": "Command-line clients always receive the raw bytes. Browsers receive a syntax-highlighted viewer for known code, Markdown, image and PDF types. A successful download decrements the remaining-downloads counter and deletes the file when it reaches zero.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "a1b2c3d4" },
+          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" }, "example": "report.pdf" },
+          {
+            "name": "raw",
+            "in": "query",
+            "required": false,
+            "description": "Set to `true` to bypass the browser viewer and return the raw bytes.",
+            "schema": { "type": "string", "enum": ["true"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File contents, streamed.",
+            "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "401": { "description": "Password required or incorrect." },
+          "404": { "description": "Not found, expired, or already consumed." }
+        }
+      },
+      "post": {
+        "operationId": "unlockFile",
+        "summary": "Submit the password for a password-protected file.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": { "password": { "type": "string" } },
+                "required": ["password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password accepted; the file is served." },
+          "401": { "description": "Invalid password." },
+          "404": { "description": "Not found or expired." }
+        }
+      }
+    },
+    "/qr/{id}/{filename}": {
+      "get": {
+        "operationId": "getQrCode",
+        "summary": "PNG QR code for a download link.",
+        "description": "Does not count as a download and does not consume the download counter.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code image.",
+            "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "404": { "description": "Not found or expired." }
+        }
+      }
+    },
+    "/secret": {
+      "post": {
+        "operationId": "createSecret",
+        "summary": "Store an encrypted burn-after-read secret.",
+        "description": "The body is encrypted with Fernet (AES-128-CBC + HMAC-SHA256). The key is returned in the response URL and is never stored on the server. Maximum 1 MB.",
+        "requestBody": {
+          "required": true,
+          "content": { "text/plain": { "schema": { "type": "string" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Secret stored. The body contains the one-time URL including the decryption key.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "example": "Secret Link (Burn after reading): https://qurl.sh/secret/a1b2c3d4e5f6/<key>\n"
+              }
+            }
+          },
+          "400": { "description": "Empty body." },
+          "413": { "description": "Secret exceeds the 1 MB limit." },
+          "429": { "description": "Rate limit exceeded." }
+        }
+      }
+    },
+    "/secret/{id}/{key}": {
+      "get": {
+        "operationId": "readSecret",
+        "summary": "Read a secret once, then destroy it.",
+        "description": "Decrypts and returns the secret, then deletes the stored ciphertext. A second request returns 404.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "key", "in": "path", "required": true, "description": "URL-safe base64 Fernet key from the creation response.", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The decrypted secret.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "400": { "description": "Invalid key or corrupt data." },
+          "404": { "description": "Not found or already read." }
+        }
+      }
+    },
+    "/pretty": {
+      "post": {
+        "operationId": "prettyPrint",
+        "summary": "Upload a JSON, YAML or XML document for pretty-printed viewing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "file": { "type": "string", "format": "binary" } },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Link to the rendered document.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "400": { "description": "Missing file or unsupported extension." },
+          "413": { "description": "Document exceeds the 5 MB pretty-print limit." }
+        }
+      }
+    },
+    "/pretty/{id}/{filename}": {
+      "get": {
+        "operationId": "viewPretty",
+        "summary": "View a pretty-printed JSON, YAML or XML document.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Rendered HTML document." },
+          "404": { "description": "Not found or expired." },
+          "413": { "description": "Document too large to render." }
+        }
+      }
+    }
+  }
+}

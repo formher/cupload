@@ -7,12 +7,19 @@
     <title>{% block title %}qurl.sh - Free Terminal File Sharing & Curl Upload{% endblock %}</title>
 
     <!-- SEO Meta Tags -->
+    {% block description %}
     <meta name="description"
-        content="The fastest way to upload files from the command line. Free, ephemeral file hosting with curl. Features: Encrypted transfer, syntax highlighting, and custom TTL.">
+        content="Upload a file from the terminal with one curl command and get a shareable link. Free, no signup, no API key. Files auto-delete after one download or 24 hours. Up to 500MB.">
+    {% endblock %}
     <meta name="keywords"
-        content="curl upload, terminal file sharing, linux file upload, command line pastebin, ephemeral storage, encrypted secrets, devops tools, file sharing for developers">
+        content="upload file from terminal, curl upload, share file from command line, terminal file sharing, linux file upload, transfer file from server, command line pastebin, ephemeral file hosting, burn after reading secret, no signup file sharing, devops tools">
     <meta name="author" content="qurl.sh">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+
+    <!-- Machine-readable documentation for AI assistants and agents -->
+    <link rel="alternate" type="text/plain" href="https://qurl.sh/llms.txt" title="llms.txt">
+    <link rel="alternate" type="text/plain" href="https://qurl.sh/llms-full.txt" title="Full plain-text documentation">
+    <link rel="alternate" type="application/json" href="https://qurl.sh/openapi.json" title="OpenAPI specification">
 
     <!-- Open Graph (Facebook/LinkedIn) -->
     <meta property="og:type" content="website">
@@ -27,21 +34,50 @@
     <meta name="twitter:title" content="qurl.sh - Terminal File Sharing">
     <meta name="twitter:description" content="Pipe content directly to the web using curl.">
 
-    <!-- JSON-LD Structured Data for SoftwareApplication -->
+    <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "qurl.sh",
-      "operatingSystem": "Linux, macOS, Windows",
-      "applicationCategory": "DeveloperApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "featureList": "Terminal upload, Encrypted secrets, Code syntax highlighting, Custom TTL",
-      "description": "A terminal-first file sharing service designed for developers. Upload files instantly using curl, wget, or httpie."
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://qurl.sh/#website",
+          "url": "https://qurl.sh/",
+          "name": "qurl.sh",
+          "description": "Terminal-first ephemeral file sharing. Upload a file with one curl command and get a shareable link.",
+          "inLanguage": "en"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://qurl.sh/#app",
+          "name": "qurl.sh",
+          "url": "https://qurl.sh/",
+          "operatingSystem": "Linux, macOS, Windows, BSD",
+          "applicationCategory": "DeveloperApplication",
+          "applicationSubCategory": "File sharing",
+          "softwareHelp": { "@type": "CreativeWork", "url": "https://qurl.sh/docs" },
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Upload a file from the terminal with a single curl command",
+            "No account, signup, email address or API key required",
+            "Files up to 500MB, streamed on upload and download",
+            "Pipe command output straight into an upload with no temporary file",
+            "Automatic expiry: configurable TTL up to 7 days, 24 hours by default",
+            "Download limits: file self-destructs after a set number of downloads",
+            "Optional password protection",
+            "Burn-after-reading encrypted secrets (Fernet, AES-128-CBC + HMAC)",
+            "QR code for every upload",
+            "Syntax-highlighted code and Markdown viewer in the browser",
+            "JSON, YAML and XML pretty-printing"
+          ],
+          "description": "A terminal-first, no-signup file sharing service for developers and sysadmins. Upload a file with curl, wget or httpie and get back a short HTTPS link. Files are ephemeral and delete themselves after one download or 24 hours by default."
+        }
+      ]
     }
     </script>
 

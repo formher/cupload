@@ -1,4 +1,4 @@
-from flask import Blueprint, request, abort, render_template, make_response, current_app
+from flask import Blueprint, request, abort, render_template, current_app, stream_with_context
 import os
 import uuid
 import json
@@ -8,7 +8,7 @@ import markdown as md
 import bleach
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
-from app.utils import parse_ttl, update_meta_cleanup
+from app.utils import parse_ttl, update_meta_cleanup, stream_and_cleanup
 
 MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -34,10 +34,17 @@ def upload_file(filename):
     upload_folder = current_app.config['UPLOAD_FOLDER']
 
     content_length = request.content_length
-    if content_length is None:
-        return "Missing Content-Length header.\n", 411  # Length Required
-    if content_length > max_size:
+    if content_length is not None and content_length > max_size:
         return f"File too large. Max allowed size is {max_size_mb}MB.\n", 413  # Payload Too Large
+
+    # A piped upload (`... | curl -T - https://qurl.sh/name.log`) is sent with
+    # chunked transfer encoding and carries no Content-Length. That is fine as
+    # long as the WSGI server gives us a stream we can read to EOF — the size
+    # ceiling is re-checked per chunk below regardless. Without that guarantee
+    # Werkzeug hands back an empty stream and we would silently store a 0-byte
+    # file, so those requests still get rejected.
+    if content_length is None and not request.environ.get('wsgi.input_terminated'):
+        return "Missing Content-Length header.\n", 411  # Length Required
 
     random_id = str(uuid.uuid4())[:8]
     dir_path = os.path.join(upload_folder, random_id)
@@ -151,7 +158,17 @@ def serve_file(random_id, filename):
 
             supported_exts = code_exts + markdown_exts + image_exts + pdf_exts
 
-            if not is_cli and not is_raw and ext in supported_exts:
+            # Text is read fully into memory to be rendered into the template,
+            # so large files skip the viewer and fall through to the streaming
+            # raw path. Images/PDFs are fine: the viewer only embeds a ?raw=true
+            # URL for those, it never reads the bytes here.
+            text_exts = code_exts + markdown_exts
+            renderable = (
+                ext not in text_exts
+                or os.path.getsize(file_path) <= current_app.config['MAX_VIEWER_BYTES']
+            )
+
+            if not is_cli and not is_raw and ext in supported_exts and renderable:
                 # Use raw=true in template for media src
 
                 # Determine Type
@@ -213,42 +230,37 @@ def serve_file(random_id, filename):
                                      language=lang,
                                      file_type=file_type)
 
-            # Default File Serving (or ?raw=true)
-            with open(file_path, 'rb') as f:
-                file_data = f.read()
+            # Default File Serving (or ?raw=true) — streamed, never buffered.
+            mime_types = {
+                '.pdf': 'application/pdf',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.svg': 'image/svg+xml',
+                '.webp': 'image/webp',
+            }
+            content_type = mime_types.get(ext, 'application/octet-stream')
 
-            response = make_response(file_data)
-            
-            # Set correct MIME for media
-            if ext == '.pdf':
-                response.headers['Content-Type'] = 'application/pdf'
-            elif ext in ['.jpg', '.jpeg']:
-                response.headers['Content-Type'] = 'image/jpeg'
-            elif ext == '.png':
-                response.headers['Content-Type'] = 'image/png'
-            elif ext == '.gif':
-                response.headers['Content-Type'] = 'image/gif'
-            elif ext == '.svg':
-                response.headers['Content-Type'] = 'image/svg+xml'
-            elif ext == '.webp':
-                response.headers['Content-Type'] = 'image/webp'
-            else:
-                response.headers['Content-Type'] = 'application/octet-stream'
-                
+            file_size = os.path.getsize(file_path)
+            response = current_app.response_class(
+                stream_with_context(
+                    stream_and_cleanup(file_path, dir_path, meta_path)
+                ),
+                mimetype=content_type,
+            )
+            # Set explicitly: a generator body would otherwise go out chunked,
+            # which costs curl/wget their progress bar on big files.
+            response.headers['Content-Length'] = str(file_size)
+
             # Only force download for generic files, not media we want to view raw
-            if is_raw and ext not in image_exts and ext not in pdf_exts:
-                 response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-            elif not is_raw:
-                 # Standard curl/wget behavior
-                 response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+            if not (is_raw and ext in image_exts + pdf_exts):
+                # Standard curl/wget behavior
+                response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
 
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
 
-            @response.call_on_close
-            def update_or_delete():
-                update_meta_cleanup(file_path, dir_path, meta_path)
-            
             downloads_total.labels(mode='raw').inc()
             current_app.logger.info(f"File served: {random_id}/{filename} to {request.remote_addr} (Raw/Download)")
 
