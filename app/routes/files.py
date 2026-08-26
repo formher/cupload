@@ -10,7 +10,8 @@ import bleach
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
 from app.utils import (parse_ttl, update_meta_cleanup, stream_and_cleanup,
-                       is_bot, is_cli, human_size, human_duration)
+                       is_bot, is_cli, human_size, human_duration,
+                       resolve_upload_file)
 
 MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -52,9 +53,12 @@ def upload_file(filename):
     # between an enumeration scan and somebody's upload. Existing links keep
     # working: lookup is a path stat, not a length check.
     random_id = uuid.uuid4().hex[:16]
-    dir_path = os.path.join(upload_folder, random_id)
+    dir_path, file_path = resolve_upload_file(upload_folder, random_id, filename)
+    if not file_path:
+        current_app.logger.warning(
+            f"Rejected upload path from {request.remote_addr}: {filename!r}")
+        return "Invalid filename.\n", 400
     os.makedirs(dir_path, exist_ok=True)
-    file_path = os.path.join(dir_path, filename)
 
     # Check for password header
     password = request.headers.get('X-Password')
@@ -175,11 +179,14 @@ def serve_file(random_id, filename):
         abort(404)
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    dir_path = os.path.join(upload_folder, random_id)
-    file_path = os.path.join(dir_path, filename)
+    dir_path, file_path = resolve_upload_file(upload_folder, random_id, filename)
+    if not file_path:
+        current_app.logger.warning(
+            f"Rejected download path from {request.remote_addr}: {random_id!r}/{filename!r}")
+        abort(404)
     meta_path = file_path + '.meta'
 
-    if os.path.exists(file_path):
+    if os.path.isfile(file_path):
         # Start matching Metadata Logic
         meta_data = {}
         if os.path.exists(meta_path):

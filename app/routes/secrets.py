@@ -4,7 +4,7 @@ import uuid
 import shutil
 from cryptography.fernet import Fernet
 from app.extensions import limiter, uploads_total, downloads_total, expiries_total
-from app.utils import is_bot
+from app.utils import is_bot, resolve_upload_file
 
 secrets_bp = Blueprint('secrets', __name__)
 
@@ -63,10 +63,10 @@ def get_secret(random_id, key):
 
     try:
         upload_folder = current_app.config['UPLOAD_FOLDER']
-        dir_path = os.path.join(upload_folder, 'secrets', random_id)
-        file_path = os.path.join(dir_path, 'secret.enc')
-        
-        if not os.path.exists(file_path):
+        dir_path, file_path = resolve_upload_file(
+            os.path.join(upload_folder, 'secrets'), random_id, 'secret.enc')
+
+        if not file_path or not os.path.isfile(file_path):
             current_app.logger.warning(f"Secret not found (404): {random_id} from {request.remote_addr}")
             abort(404)
             

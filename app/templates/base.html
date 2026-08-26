@@ -35,7 +35,7 @@
     <meta name="twitter:description" content="Pipe content directly to the web using curl.">
 
     <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="{{ csp_nonce }}">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -83,7 +83,7 @@
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-D37NSBGG3C"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());

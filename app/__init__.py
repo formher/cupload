@@ -1,6 +1,7 @@
 import logging
 import logging.config
-from flask import Flask
+import secrets as secrets_module
+from flask import Flask, g, request
 from app.config import Config
 from app.extensions import limiter, scheduler, metrics
 from app.utils import cleanup_old_files
@@ -57,6 +58,66 @@ def create_app(config_class=Config):
     app.register_blueprint(files_bp)
     app.register_blueprint(secrets_bp)
 
+    # Per-request nonce so inline <script> blocks can be allowed by name rather
+    # than by opening the policy up with 'unsafe-inline'.
+    @app.before_request
+    def generate_csp_nonce():
+        g.csp_nonce = secrets_module.token_urlsafe(16)
+
+    @app.context_processor
+    def inject_csp_nonce():
+        return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+
+    # Anything that is not one of our own HTML pages is, or may contain,
+    # somebody's upload. An SVG served as image/svg+xml is a *document*: open
+    # the link and any <script> inside it runs on this origin. `sandbox` drops
+    # it into an opaque origin with scripting disabled, which is the fix.
+    # frame-ancestors/SAMEORIGIN rather than 'none' because viewer.html embeds
+    # PDFs from this same origin via <embed src="?raw=true">.
+    USER_CONTENT_CSP = "default-src 'none'; sandbox; frame-ancestors 'self'"
+
+    PAGE_CSP_TEMPLATE = (
+        "default-src 'self'; "
+        "script-src 'self' 'nonce-{nonce}' https://www.googletagmanager.com https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https://www.google-analytics.com; "
+        "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com "
+        "https://www.googletagmanager.com; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
+    )
+
+    @app.after_request
+    def set_security_headers(response):
+        # Keyed on what is actually being returned, not on the route: serve_file
+        # hands back both our viewer HTML and raw user bytes.
+        if response.mimetype == 'text/html':
+            response.headers['Content-Security-Policy'] = PAGE_CSP_TEMPLATE.format(
+                nonce=getattr(g, 'csp_nonce', ''))
+            response.headers['X-Frame-Options'] = 'DENY'
+            response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        else:
+            response.headers['Content-Security-Policy'] = USER_CONTENT_CSP
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+            # A download link is itself the credential. Never send it onward.
+            response.headers['Referrer-Policy'] = 'no-referrer'
+
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Permissions-Policy'] = (
+            'accelerometer=(), autoplay=(), camera=(), display-capture=(), '
+            'encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), '
+            'magnetometer=(), microphone=(), midi=(), payment=(), '
+            'picture-in-picture=(), usb=(), xr-spatial-tracking=()'
+        )
+        # HSTS is also set by nginx, which is the TLS terminator; setting it here
+        # too means it survives a proxy config change. Browsers ignore it on
+        # plain HTTP, so it is harmless in local development.
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+        return response
+
     # Only the marketing and documentation surface may be indexed. Everything
     # else — uploaded files, QR codes, pretty-printed documents, secrets, the
     # password prompt and every error page — gets noindex.
@@ -79,7 +140,6 @@ def create_app(config_class=Config):
 
     @app.after_request
     def set_robots_tag(response):
-        from flask import request
         if request.endpoint not in PUBLIC_ENDPOINTS:
             response.headers['X-Robots-Tag'] = (
                 'noindex, nofollow, noarchive, nosnippet, noimageindex'

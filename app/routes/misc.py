@@ -11,7 +11,8 @@ import time
 import shutil
 from werkzeug.security import check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, expiries_total
-from app.utils import is_bot, is_cli, update_meta_cleanup
+from werkzeug.utils import secure_filename
+from app.utils import is_bot, is_cli, update_meta_cleanup, resolve_upload_file
 from app.config import Config
 
 misc_bp = Blueprint('misc', __name__)
@@ -154,10 +155,9 @@ def get_qr(random_id, filename):
 
     # Verify file exists first (but don't delete it)
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    dir_path = os.path.join(upload_folder, random_id)
-    file_path = os.path.join(dir_path, filename)
-    
-    if not os.path.exists(file_path):
+    _, file_path = resolve_upload_file(upload_folder, random_id, filename)
+
+    if not file_path or not os.path.isfile(file_path):
         abort(404)
         
     url = f"https://qurl.sh/{random_id}/{filename}"
@@ -188,7 +188,14 @@ def upload_pretty_file():
     if uploaded_file.filename == '':
         return "No selected file", 400
 
-    ext = os.path.splitext(uploaded_file.filename)[1].lower()
+    # Werkzeug does not sanitise multipart filenames, and this one is written
+    # to disk: '../../x' walks out of the upload folder and '/tmp/x' ignores it
+    # entirely. That is an arbitrary file write, as root in the container.
+    safe_name = secure_filename(uploaded_file.filename)
+    if not safe_name:
+        return "Invalid filename.\n", 400
+
+    ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ['.json', '.yaml', '.yml', '.xml']:
         return "Only .json, .yaml, .yml, and .xml files are allowed", 400
 
@@ -200,13 +207,14 @@ def upload_pretty_file():
 
     random_id = uuid.uuid4().hex[:16]
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    dir_path = os.path.join(upload_folder, random_id)
+    dir_path, file_path = resolve_upload_file(upload_folder, random_id, safe_name)
+    if not file_path:
+        return "Invalid filename.\n", 400
     os.makedirs(dir_path, exist_ok=True)
-    file_path = os.path.join(dir_path, uploaded_file.filename)
     uploaded_file.save(file_path)
 
     uploads_total.labels(kind='pretty').inc()
-    return f"You can access your pretty-printed file at https://qurl.sh/pretty/{random_id}/{uploaded_file.filename}\n"
+    return f"You can access your pretty-printed file at https://qurl.sh/pretty/{random_id}/{safe_name}\n"
 
 @misc_bp.route('/pretty/<random_id>/<filename>', methods=['GET', 'POST'])
 def render_pretty_file(random_id, filename):
@@ -214,12 +222,10 @@ def render_pretty_file(random_id, filename):
         abort(404)
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    dir_path = os.path.join(upload_folder, random_id)
-    file_path = os.path.join(dir_path, filename)
-    meta_path = file_path + '.meta'
-
-    if not os.path.exists(file_path):
+    dir_path, file_path = resolve_upload_file(upload_folder, random_id, filename)
+    if not file_path or not os.path.isfile(file_path):
         abort(404)
+    meta_path = file_path + '.meta'
 
     # A file uploaded through PUT / carries a .meta; /pretty's own uploads do
     # not. Where one exists it has to be honoured exactly as on the download

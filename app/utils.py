@@ -46,6 +46,38 @@ BOT_UA_TOKENS = (
 )
 
 
+def resolve_upload_path(upload_folder, *parts):
+    """Join request-supplied parts under upload_folder, or None if they escape it.
+
+    os.path.join is not a security boundary. An absolute component throws away
+    everything before it - join('/uploads/abc', '/etc/cron.d/x') is
+    '/etc/cron.d/x' - and '..' segments walk upward. Werkzeug hands multipart
+    filenames over verbatim, so any path built from a request has to be checked
+    to still be inside the upload root once it is resolved.
+    """
+    root = os.path.realpath(upload_folder)
+    try:
+        candidate = os.path.realpath(os.path.join(root, *parts))
+    except (ValueError, OSError):
+        return None
+    if candidate != root and not candidate.startswith(root + os.sep):
+        return None
+    return candidate
+
+
+def resolve_upload_file(upload_folder, dir_name, filename):
+    """Resolve <upload_folder>/<dir_name>/<filename>, returning (dir, file) or (None, None).
+
+    Also refuses a filename that resolves anywhere other than directly inside
+    its own directory, which rules out '.', '..' and any embedded separator.
+    """
+    dir_path = resolve_upload_path(upload_folder, dir_name)
+    file_path = resolve_upload_path(upload_folder, dir_name, filename)
+    if not dir_path or not file_path or os.path.dirname(file_path) != dir_path:
+        return None, None
+    return dir_path, file_path
+
+
 def human_size(num_bytes):
     """e.g. "4.2 MB" - echoed back so the uploader can see the whole file arrived."""
     size = float(num_bytes)
