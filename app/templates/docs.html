@@ -248,10 +248,16 @@ font-size: 0.9rem;
     <h2 id="upload">How do I upload a file from the terminal?</h2>
     <p>Run one command:</p>
     <pre><code>$ curl -T ./report.pdf https://qurl.sh</code></pre>
-    <p>qurl.sh replies in plain text with the link to share:</p>
-    <pre><code>You can download your file at https://qurl.sh/a1b2c3d4/report.pdf
-QR Code: https://qurl.sh/qr/a1b2c3d4/report.pdf
-Try wget http://qurl.sh/a1b2c3d4/report.pdf</code></pre>
+    <p>qurl.sh confirms the upload in plain text and hands back the link to share:</p>
+    <pre><code>✔ Success - uploaded report.pdf (4.2 MB)
+  Expires in 24 hours or after 1 download, whichever comes first
+
+You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf
+QR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf
+Try wget http://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf</code></pre>
+    <p>
+        The byte count is worth a glance &mdash; it is how you spot an upload that was cut short rather than completed.
+    </p>
     <p>
         <code>-T</code> (long form <code>--upload-file</code>) tells curl to send an HTTP
         <code>PUT</code>. Because the URL has no path, curl appends the local filename for you.
@@ -376,7 +382,7 @@ $ ssh me@server 'curl -s -T /var/log/app.log https://qurl.sh'
 $ curl -s -T ./test-results.xml -H "X-TTL: 2d" https://qurl.sh
 
 # Capture the URL in a shell variable
-$ URL=$(curl -s -T ./build.log https://qurl.sh | head -1 | awk '{print $NF}')
+$ URL=$(curl -s -T ./build.log https://qurl.sh | awk '/^You can download/ {print $NF}')
 $ echo "Build log: $URL"
 
 # Get a file out of a running container

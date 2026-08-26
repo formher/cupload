@@ -1,4 +1,5 @@
-from flask import Blueprint, request, abort, render_template, current_app, stream_with_context
+from flask import (Blueprint, request, abort, render_template, current_app,
+                   stream_with_context, make_response)
 import os
 import uuid
 import json
@@ -8,7 +9,8 @@ import markdown as md
 import bleach
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
-from app.utils import parse_ttl, update_meta_cleanup, stream_and_cleanup, is_bot, is_cli
+from app.utils import (parse_ttl, update_meta_cleanup, stream_and_cleanup,
+                       is_bot, is_cli, human_size, human_duration)
 
 MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -61,7 +63,8 @@ def upload_file(filename):
     ttl_str = request.headers.get('X-TTL')
     downloads_str = request.headers.get('X-Downloads')
     
-    expiry_time = time.time() + parse_ttl(ttl_str)
+    ttl_seconds = parse_ttl(ttl_str)
+    expiry_time = time.time() + ttl_seconds
     try:
         requested_downloads = int(downloads_str) if downloads_str else 1
     except ValueError:
@@ -108,7 +111,26 @@ def upload_file(filename):
     upload_bytes.observe(bytes_written)
     current_app.logger.info(f"File uploaded: {random_id}/{filename} (Size: {bytes_written} bytes, TTL: {ttl_str}, Limit: {remaining_downloads}) from {request.remote_addr}")
         
-    return f"You can download your file at https://qurl.sh/{random_id}/{filename}\nQR Code: https://qurl.sh/qr/{random_id}/{filename}\nTry wget http://qurl.sh/{random_id}/{filename}\n"
+    # Lead with an explicit confirmation: curl -T prints nothing of its own on
+    # success, so without this the reply reads as output with no verdict
+    # attached. The byte count is the useful half - it is how you tell a
+    # complete upload from one that was cut short.
+    downloads_label = "1 download" if remaining_downloads == 1 else f"{remaining_downloads} downloads"
+    summary = [
+        f"\u2714 Success - uploaded {filename} ({human_size(bytes_written)})",
+        f"  Expires in {human_duration(ttl_seconds)} or after {downloads_label}, whichever comes first",
+    ]
+    if password:
+        summary.append("  Password required to download")
+
+    body = "\n".join(summary) + (
+        f"\n\n"
+        f"You can download your file at https://qurl.sh/{random_id}/{filename}\n"
+        f"QR Code: https://qurl.sh/qr/{random_id}/{filename}\n"
+        f"Try wget http://qurl.sh/{random_id}/{filename}\n"
+    )
+    # Without this Flask labels a bare string text/html.
+    return make_response(body, {'Content-Type': 'text/plain; charset=utf-8'})
 
 @files_bp.route('/<random_id>/<filename>', methods=['GET', 'POST'])
 def serve_file(random_id, filename):

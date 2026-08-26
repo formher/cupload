@@ -46,6 +46,40 @@ BOT_UA_TOKENS = (
 )
 
 
+def human_size(num_bytes):
+    """e.g. "4.2 MB" - echoed back so the uploader can see the whole file arrived."""
+    size = float(num_bytes)
+    for unit in ('B', 'KB', 'MB', 'GB'):
+        if size < 1024 or unit == 'GB':
+            return f"{int(size)} B" if unit == 'B' else f"{size:.1f} {unit}"
+        size /= 1024
+
+
+def human_duration(seconds):
+    """e.g. "7 days", "1 hour 30 minutes".
+
+    Carries the remainder into the next unit down: an X-TTL of 90m reported as
+    "1 hour" would understate the actual lifetime by half an hour.
+    """
+    seconds = int(seconds)
+    units = ((86400, 'day'), (3600, 'hour'), (60, 'minute'), (1, 'second'))
+
+    def plural(value, unit):
+        return f"{value} {unit}{'' if value == 1 else 's'}"
+
+    for index, (amount, unit) in enumerate(units):
+        if seconds >= amount:
+            value, remainder = divmod(seconds, amount)
+            head = plural(value, unit)
+            if remainder and index + 1 < len(units):
+                next_amount, next_unit = units[index + 1]
+                carried = remainder // next_amount
+                if carried:
+                    return f"{head} {plural(carried, next_unit)}"
+            return head
+    return plural(seconds, 'second')
+
+
 CLI_UA_TOKENS = ('curl', 'wget', 'httpie')
 
 

@@ -42,11 +42,14 @@ expires. If you need the file to still be there next month, use object storage.
 
 `-T` (long form `--upload-file`) makes curl send an HTTP `PUT`. When the URL has
 no path, curl appends the local filename, so the request goes to
-`https://qurl.sh/report.pdf`. The response is plain text:
+`https://qurl.sh/report.pdf`. The response is plain text, confirming the upload before the links:
 
-    You can download your file at https://qurl.sh/a1b2c3d4/report.pdf
-    QR Code: https://qurl.sh/qr/a1b2c3d4/report.pdf
-    Try wget http://qurl.sh/a1b2c3d4/report.pdf
+    ✔ Success - uploaded report.pdf (4.2 MB)
+      Expires in 24 hours or after 1 download, whichever comes first
+
+    You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf
+    QR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf
+    Try wget http://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf
 
 `a1b2c3d4` is a random 8-character identifier generated per upload. The original
 filename is preserved in the URL.
@@ -250,7 +253,7 @@ wrong password, `404` missing, expired, or already-consumed, `411` missing
 Responses to command-line clients are plain text, so they can be used directly
 in scripts:
 
-    URL=$(curl -s -T ./build.log https://qurl.sh | head -1 | awk '{print $NF}')
+    URL=$(curl -s -T ./build.log https://qurl.sh | awk '/^You can download/ {print $NF}')
     echo "Build log: $URL"
 
 ---
