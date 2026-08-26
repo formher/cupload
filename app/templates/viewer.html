@@ -119,7 +119,17 @@ padding: 0.4em 0.8em;
         <div class="header-bar">
             <div class="filename">{{ filename }}</div>
             <div class="actions">
+                {# Only code/markdown keep their bytes in the page (the hidden
+                   textarea below), so only there can the button rebuild the file
+                   locally. For image/pdf the embedded <img>/<iframe> fetch of
+                   ?raw=true IS the download - with the default limit of one it
+                   has already consumed the file by the time the page finishes
+                   loading, so a button here could only ever 404. The browser's
+                   own PDF toolbar and right-click-save handle those, using the
+                   copy already loaded and costing no extra download. #}
+                {% if file_type in ('code', 'markdown') %}
                 <button id="downloadBtn" type="button">Download Raw</button>
+                {% endif %}
             </div>
         </div>
         <!-- Store content safely for JS if code -->
