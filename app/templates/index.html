@@ -76,11 +76,19 @@ $ curl -O https://qurl.sh/abcd/file.txt</code></pre>
             </h3>
             <p class="text-sm text-muted">Stuck in an SSH session with a file you need on your phone? No cable, no
                 account, no AirDrop.</p>
+
+            <p class="text-sm text-muted" style="margin-top: 20px;">1. Upload it &mdash; the reply hands you a QR link:
+            </p>
+            <pre><code>$ curl -T file.txt https://qurl.sh
+You can download your file at https://qurl.sh/abcd/file.txt
+QR Code: https://qurl.sh/qr/abcd/file.txt</code></pre>
+
+            <p class="text-sm text-muted" style="margin-top: 20px;">2. Fetch that link to draw the code
+                <b>in your terminal</b>:</p>
             <pre><code>$ curl https://qurl.sh/qr/abcd/file.txt</code></pre>
-            <p class="text-sm text-muted" style="margin-top: 20px;">Prints a scannable QR code <b>in your terminal</b>.
-                Point your phone camera at it and the download starts.</p>
-            <p class="text-sm text-muted">Open the same URL in a browser for a PNG &mdash; handy when screen-sharing.
-                Viewing the QR never uses up a download.</p>
+
+            <p class="text-sm text-muted" style="margin-top: 20px;">Point your phone camera at it and the download
+                starts. Open the same URL in a browser for a PNG instead &mdash; handy when screen-sharing.</p>
         </div>
 
         <!-- Pretty Print Card -->
