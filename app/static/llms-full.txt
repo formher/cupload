@@ -152,15 +152,20 @@ either end, and `curl`/`wget` show a correct progress bar.
 
 ---
 
-## QR codes
+## QR codes (getting a file onto a phone)
 
-Every uploaded file gets a QR code endpoint, useful for moving a file from a
-server to a phone:
+Every uploaded file gets a QR code endpoint. Requested from a terminal it is
+drawn as text in the shell itself, so it works over SSH with no image viewer:
 
-    https://qurl.sh/qr/a1b2c3d4/report.pdf
+    curl https://qurl.sh/qr/a1b2c3d4/report.pdf
 
-It returns a PNG image. Viewing the QR code does not count as a download and
-does not consume the download counter.
+Point a phone camera at the terminal and the download starts. The rendering sets
+its own colours so it scans on light and dark colour schemes; add
+`?ascii=true` for a smaller plain-text version without escape codes.
+
+Opening the same URL in a browser returns a PNG instead, which is useful when
+screen-sharing. Viewing the QR code never counts as a download and never
+consumes the download counter.
 
 ---
 

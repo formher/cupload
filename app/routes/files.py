@@ -8,7 +8,7 @@ import markdown as md
 import bleach
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
-from app.utils import parse_ttl, update_meta_cleanup, stream_and_cleanup, is_bot
+from app.utils import parse_ttl, update_meta_cleanup, stream_and_cleanup, is_bot, is_cli
 
 MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -152,8 +152,7 @@ def serve_file(random_id, filename):
 
         try:
             # Code/Media Viewer Logic
-            agent = request.user_agent.string.lower()
-            is_cli = any(cli in agent for cli in ['curl', 'wget', 'httpie'])
+            cli_client = is_cli(request.user_agent.string)
             is_raw = request.args.get('raw') == 'true'
             
             ext = os.path.splitext(filename)[1].lower()
@@ -180,7 +179,7 @@ def serve_file(random_id, filename):
                 or os.path.getsize(file_path) <= current_app.config['MAX_VIEWER_BYTES']
             )
 
-            if not is_cli and not is_raw and ext in supported_exts and renderable:
+            if not cli_client and not is_raw and ext in supported_exts and renderable:
                 # Use raw=true in template for media src
 
                 # Determine Type

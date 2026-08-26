@@ -26,6 +26,10 @@ Download:
     curl -O https://qurl.sh/a1b2c3d4/report.pdf
     wget https://qurl.sh/a1b2c3d4/report.pdf
 
+Get a file onto a phone - prints a scannable QR code in the terminal:
+
+    curl https://qurl.sh/qr/a1b2c3d4/report.pdf
+
 Optional upload headers:
 
     -H "X-TTL: 1h"          expire after 1h (s/m/h/d units, max 7d, default 24h)

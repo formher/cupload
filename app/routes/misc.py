@@ -11,16 +11,44 @@ import time
 import shutil
 from werkzeug.security import check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, expiries_total
-from app.utils import is_bot, update_meta_cleanup
+from app.utils import is_bot, is_cli, update_meta_cleanup
 from app.config import Config
 
 misc_bp = Blueprint('misc', __name__)
 
+
+class _AlwaysTty(io.StringIO):
+    """qrcode.print_tty refuses to write anywhere that is not a terminal."""
+
+    def isatty(self):
+        return True
+
+
+def render_qr_text(url, plain=False):
+    """A QR code as terminal text, so it is usable over SSH with no image viewer."""
+    qr = qrcode.QRCode(border=2, error_correction=qrcode.constants.ERROR_CORRECT_L)
+    qr.add_data(url)
+    qr.make(fit=True)
+
+    if plain:
+        # Half-block form: ~500 bytes and survives being redirected to a file,
+        # but it draws modules in the foreground colour, so it is only the right
+        # way round on a dark terminal.
+        buf = io.StringIO()
+        qr.print_ascii(out=buf, invert=True)
+    else:
+        # ANSI form: sets a white background and black modules explicitly, so it
+        # scans identically on a light or a dark colour scheme. Larger, and the
+        # escapes are noise if redirected, hence ?ascii=true above.
+        buf = _AlwaysTty()
+        qr.print_tty(out=buf)
+
+    return f"{buf.getvalue()}\n{url}\n"
+
 @misc_bp.route('/', methods=['GET'])
 @limiter.limit("60 per minute")
 def index():
-    agent = request.user_agent.string.lower()
-    if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
+    if is_cli(request.user_agent.string):
         max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
         return f"""
 qurl.sh - Terminal friendly file sharing
@@ -41,8 +69,8 @@ Download:
   wget https://qurl.sh/<id>/file.txt
   curl -O https://qurl.sh/<id>/file.txt
 
-QR Code (View on phone):
-  https://qurl.sh/qr/<id>/file.txt
+Send to your phone (prints a QR in the terminal, then scan it):
+  curl https://qurl.sh/qr/<id>/file.txt
 
 Pretty Print (JSON/YAML/XML):
   curl -F "file=@config.yaml" https://qurl.sh/pretty
@@ -125,8 +153,15 @@ def get_qr(random_id, filename):
     if not os.path.exists(file_path):
         abort(404)
         
-    # Generate QR Code
     url = f"https://qurl.sh/{random_id}/{filename}"
+
+    # A terminal cannot display a PNG, which is exactly where this is most
+    # useful: uploaded from an SSH session, wanted on a phone.
+    if is_cli(request.user_agent.string):
+        body = render_qr_text(url, plain=request.args.get('ascii') == 'true')
+        return make_response(body, {'Content-Type': 'text/plain; charset=utf-8'})
+
+    # Generate QR Code
     img = qrcode.make(url)
     
     # Save to buffer

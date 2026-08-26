@@ -343,9 +343,22 @@ Secret Link (Burn after reading): https://qurl.sh/secret/a1b2c3d4e5f6/&lt;key&gt
     </p>
 
     <h2 id="qr">How do I get a file onto my phone?</h2>
-    <p>Every upload has a QR code endpoint. Open it on the machine holding the file and scan it:</p>
-    <pre><code>$ open https://qurl.sh/qr/a1b2c3d4/report.pdf</code></pre>
-    <p>Viewing the QR code does not count as a download and does not consume the download counter.</p>
+    <p>
+        Ask for the QR code from the terminal and it is drawn as text, right in your shell &mdash; no image viewer
+        needed, which matters when you are three SSH hops from a desktop:
+    </p>
+    <pre><code>$ curl https://qurl.sh/qr/a1b2c3d4/report.pdf</code></pre>
+    <p>
+        Point your phone camera at the terminal and the download starts. The block drawing sets its own colours, so it
+        scans on a light or a dark colour scheme; add <code>?ascii=true</code> for a smaller plain-text version with no
+        escape codes, which is what you want if you are piping it to a file.
+    </p>
+    <p>Opening the same URL in a browser returns a PNG instead &mdash; useful when screen-sharing or presenting.</p>
+    <p>
+        Viewing the QR code never counts as a download and never consumes the counter. The code encodes the plain
+        download link, so with the default limit of one download the first person to scan it gets the file. Pair it with
+        <code>-H "X-Downloads: 10"</code> if you are putting it on a screen in front of a room.
+    </p>
 
     <h2 id="pretty">How do I share readable JSON, YAML or XML?</h2>
     <pre><code>$ curl -F "file=@config.yaml" https://qurl.sh/pretty</code></pre>

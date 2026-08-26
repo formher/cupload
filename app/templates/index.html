@@ -60,8 +60,27 @@ $ curl -T file.txt -H "X-Downloads: 5" https://qurl.sh</code></pre>
             <pre><code>$ wget https://qurl.sh/abcd/file.txt
 $ curl -O https://qurl.sh/abcd/file.txt</code></pre>
 
-            <p class="text-sm text-muted" style="margin-top: 20px;">View QR:</p>
-            <pre><code>$ open https://qurl.sh/qr/abcd/file.txt</code></pre>
+        </div>
+
+        <!-- Send to Phone Card -->
+        <div class="card">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
+                    <path d="M14 14h3v3h-3zM18 18h3v3h-3z" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Send to Phone
+            </h3>
+            <p class="text-sm text-muted">Stuck in an SSH session with a file you need on your phone? No cable, no
+                account, no AirDrop.</p>
+            <pre><code>$ curl https://qurl.sh/qr/abcd/file.txt</code></pre>
+            <p class="text-sm text-muted" style="margin-top: 20px;">Prints a scannable QR code <b>in your terminal</b>.
+                Point your phone camera at it and the download starts.</p>
+            <p class="text-sm text-muted">Open the same URL in a browser for a PNG &mdash; handy when screen-sharing.
+                Viewing the QR never uses up a download.</p>
         </div>
 
         <!-- Pretty Print Card -->

@@ -46,6 +46,17 @@ BOT_UA_TOKENS = (
 )
 
 
+CLI_UA_TOKENS = ('curl', 'wget', 'httpie')
+
+
+def is_cli(user_agent):
+    """True for terminal HTTP clients, which get plain text rather than HTML."""
+    if not user_agent:
+        return False
+    agent = user_agent.lower()
+    return any(token in agent for token in CLI_UA_TOKENS)
+
+
 def is_bot(user_agent):
     """True for crawlers and link-preview fetchers, which must not consume a download."""
     if not user_agent:
