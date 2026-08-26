@@ -6,13 +6,19 @@ import os
 import uuid
 import json
 import yaml
-import xml.dom.minidom
+# defusedxml, not xml.dom.minidom: the stdlib parser expands internal entities,
+# so a 419-byte file with six levels of nested entities expanded to 10MB, and
+# nine levels expands to 10GB. With a single gunicorn worker that is the whole
+# service. defusedxml refuses entity and DTD declarations outright.
+import defusedxml.minidom
+from defusedxml.common import DefusedXmlException
 import time
 import shutil
 from werkzeug.security import check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, expiries_total
 from werkzeug.utils import secure_filename
-from app.utils import is_bot, is_cli, update_meta_cleanup, resolve_upload_file
+from app.utils import (is_bot, is_cli, update_meta_cleanup, resolve_upload_file,
+                       is_metadata_sidecar)
 from app.config import Config
 
 misc_bp = Blueprint('misc', __name__)
@@ -157,7 +163,7 @@ def get_qr(random_id, filename):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     _, file_path = resolve_upload_file(upload_folder, random_id, filename)
 
-    if not file_path or not os.path.isfile(file_path):
+    if not file_path or not os.path.isfile(file_path) or is_metadata_sidecar(file_path):
         abort(404)
         
     url = f"https://qurl.sh/{random_id}/{filename}"
@@ -223,7 +229,7 @@ def render_pretty_file(random_id, filename):
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
     dir_path, file_path = resolve_upload_file(upload_folder, random_id, filename)
-    if not file_path or not os.path.isfile(file_path):
+    if not file_path or not os.path.isfile(file_path) or is_metadata_sidecar(file_path):
         abort(404)
     meta_path = file_path + '.meta'
 
@@ -270,7 +276,7 @@ def render_pretty_file(random_id, filename):
             parsed = yaml.safe_load(raw_content)
             content = yaml.dump(parsed, sort_keys=False, indent=4)
         elif ext == '.xml':
-            dom = xml.dom.minidom.parseString(raw_content)
+            dom = defusedxml.minidom.parseString(raw_content)
             content = '\n'.join([line for line in dom.toprettyxml().split('\n') if line.strip()])
         else:
             return "Unsupported file format", 415
@@ -284,8 +290,16 @@ def render_pretty_file(random_id, filename):
 
         downloads_total.labels(mode='pretty').inc()
         return render_template('pretty.html', content=content, filename=filename)
+    except DefusedXmlException:
+        current_app.logger.warning(
+            f"Blocked XML entity/DTD declaration in {random_id}/{filename} "
+            f"from {request.remote_addr}")
+        return "This XML declares entities or a DTD, which are not accepted.\n", 400
     except Exception as e:
-        return f"Error parsing file: {e}", 500
+        # The exception text can carry document fragments and internal paths, so
+        # it goes to the log rather than to the caller.
+        current_app.logger.warning(f"Pretty-print failed for {random_id}/{filename}: {e}")
+        return "Could not parse this file.\n", 400
 
 @misc_bp.app_errorhandler(404)
 def page_not_found(e):

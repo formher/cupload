@@ -8,3 +8,4 @@ cryptography
 markdown>=3.5
 bleach>=6.1
 prometheus-flask-exporter>=0.23
+defusedxml>=0.7.1

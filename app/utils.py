@@ -78,6 +78,24 @@ def resolve_upload_file(upload_folder, dir_name, filename):
     return dir_path, file_path
 
 
+def is_metadata_sidecar(file_path):
+    """True if this path is the .meta written alongside an upload.
+
+    Serving it handed out the password hash to anyone holding the link - the
+    password gate never fired, because it looks for '<name>.meta.meta', which
+    does not exist. Worse, update_meta_cleanup finds no meta for a .meta and
+    falls into its 'no meta' branch, deleting the whole directory: one request
+    destroyed an upload that had downloads remaining.
+
+    Checking that the base file exists, rather than just matching the suffix,
+    means a file a user genuinely named 'notes.meta' is still downloadable -
+    only the sidecar of an actual upload is refused.
+    """
+    if not file_path.endswith('.meta'):
+        return False
+    return os.path.isfile(file_path[:-len('.meta')])
+
+
 def human_size(num_bytes):
     """e.g. "4.2 MB" - echoed back so the uploader can see the whole file arrived."""
     size = float(num_bytes)

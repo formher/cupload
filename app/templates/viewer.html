@@ -119,7 +119,7 @@ padding: 0.4em 0.8em;
         <div class="header-bar">
             <div class="filename">{{ filename }}</div>
             <div class="actions">
-                <button id="downloadBtn" onclick="downloadRaw()">Download Raw</button>
+                <button id="downloadBtn" type="button">Download Raw</button>
             </div>
         </div>
         <!-- Store content safely for JS if code -->
@@ -150,6 +150,10 @@ padding: 0.4em 0.8em;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
 <script nonce="{{ csp_nonce }}">
+    // Bound here rather than with an onclick attribute: a CSP nonce authorises
+    // <script> blocks, but it cannot authorise inline on* attributes - those
+    // need 'unsafe-inline', which would defeat the policy. With the attribute
+    // in place the button silently did nothing.
     function downloadRaw() {
         const content = document.getElementById('rawContent').value;
         const filename = "{{ filename }}";
@@ -163,5 +167,10 @@ padding: 0.4em 0.8em;
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('downloadBtn');
+        if (btn) { btn.addEventListener('click', downloadRaw); }
+    });
 </script>
 {% endblock %}

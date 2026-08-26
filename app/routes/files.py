@@ -11,7 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import limiter, uploads_total, downloads_total, upload_bytes, expiries_total
 from app.utils import (parse_ttl, update_meta_cleanup, stream_and_cleanup,
                        is_bot, is_cli, human_size, human_duration,
-                       resolve_upload_file)
+                       resolve_upload_file, is_metadata_sidecar)
 
 MARKDOWN_ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     'p', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -184,6 +184,11 @@ def serve_file(random_id, filename):
         current_app.logger.warning(
             f"Rejected download path from {request.remote_addr}: {random_id!r}/{filename!r}")
         abort(404)
+    if is_metadata_sidecar(file_path):
+        current_app.logger.warning(
+            f"Refused metadata sidecar {random_id}/{filename} from {request.remote_addr}")
+        abort(404)
+
     meta_path = file_path + '.meta'
 
     if os.path.isfile(file_path):

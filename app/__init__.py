@@ -68,13 +68,27 @@ def create_app(config_class=Config):
     def inject_csp_nonce():
         return {'csp_nonce': getattr(g, 'csp_nonce', '')}
 
-    # Anything that is not one of our own HTML pages is, or may contain,
-    # somebody's upload. An SVG served as image/svg+xml is a *document*: open
-    # the link and any <script> inside it runs on this origin. `sandbox` drops
-    # it into an opaque origin with scripting disabled, which is the fix.
-    # frame-ancestors/SAMEORIGIN rather than 'none' because viewer.html embeds
-    # PDFs from this same origin via <embed src="?raw=true">.
-    USER_CONTENT_CSP = "default-src 'none'; sandbox; frame-ancestors 'self'"
+    # An SVG served as image/svg+xml is a *document*: open the link and any
+    # <script> inside it runs on this origin. `sandbox` drops it into an opaque
+    # origin with scripting disabled, which is the fix.
+    #
+    # It is applied only to types a browser will actually parse as a scriptable
+    # document. `sandbox` with no tokens disables scripting outright, which also
+    # stops Chrome's built-in PDF viewer from rendering at all - a PDF embedded
+    # by viewer.html came out blank. PDFs do not need it: PDF JavaScript runs
+    # inside the browser's own PDF sandbox and cannot reach this origin's DOM.
+    SANDBOXED_TYPES = {
+        'image/svg+xml',
+        'text/html',
+        'application/xhtml+xml',
+        'text/xml',
+        'application/xml',
+    }
+    SANDBOXED_CSP = "default-src 'none'; sandbox; frame-ancestors 'self'"
+    # frame-ancestors 'self' rather than 'none' because viewer.html embeds PDFs
+    # from this same origin via <embed src="?raw=true">. No other directive here,
+    # so nothing can interfere with the browser rendering the bytes.
+    USER_CONTENT_CSP = "frame-ancestors 'self'"
 
     PAGE_CSP_TEMPLATE = (
         "default-src 'self'; "
@@ -100,7 +114,10 @@ def create_app(config_class=Config):
             response.headers['X-Frame-Options'] = 'DENY'
             response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         else:
-            response.headers['Content-Security-Policy'] = USER_CONTENT_CSP
+            response.headers['Content-Security-Policy'] = (
+                SANDBOXED_CSP if response.mimetype in SANDBOXED_TYPES
+                else USER_CONTENT_CSP
+            )
             response.headers['X-Frame-Options'] = 'SAMEORIGIN'
             # A download link is itself the credential. Never send it onward.
             response.headers['Referrer-Policy'] = 'no-referrer'
