@@ -250,11 +250,25 @@ Status codes: `200` success, `400` bad request or invalid secret key, `401`
 wrong password, `404` missing, expired, or already-consumed, `411` missing
 `Content-Length` on a non-chunked upload, `413` too large, `429` rate limited.
 
-Responses to command-line clients are plain text, so they can be used directly
-in scripts:
+### Scripting and CI
 
-    URL=$(curl -s -T ./build.log https://qurl.sh | awk '/^You can download/ {print $NF}')
-    echo "Build log: $URL"
+The default response is written for a human. Two headers return something a
+build script can consume directly, so nothing has to scrape prose:
+
+    # just the URL, nothing else
+    URL=$(curl -s -T ./build.log -H "X-Format: url" https://qurl.sh)
+
+    # the full result as JSON
+    curl -s -T ./build.log -H "X-Format: json" https://qurl.sh | jq -r .url
+
+`Accept: application/json` is honoured as an equivalent to `X-Format: json`.
+The JSON object contains url, qr_url, filename, size_bytes, expires_at,
+expires_in_seconds, remaining_downloads and password_protected. Comparing
+size_bytes against the file on disk is the cheapest way for a job to assert the
+upload completed.
+
+Anything else, including curl's default `Accept: */*`, returns the
+human-readable text.
 
 ---
 

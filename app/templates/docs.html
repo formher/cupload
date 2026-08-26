@@ -240,6 +240,7 @@ font-size: 0.9rem;
             <li><a href="#qr">How do I get a file onto my phone?</a></li>
             <li><a href="#pretty">How do I share readable JSON, YAML or XML?</a></li>
             <li><a href="#recipes">Recipes for servers, containers and CI</a></li>
+            <li><a href="#scripting">How do I use this in a script or CI job?</a></li>
             <li><a href="#limits">Limits, privacy and retention</a></li>
             <li><a href="#api">HTTP API reference</a></li>
         </ul>
@@ -381,9 +382,12 @@ $ ssh me@server 'curl -s -T /var/log/app.log https://qurl.sh'
 # Ship a failing CI artifact somewhere a teammate can read it
 $ curl -s -T ./test-results.xml -H "X-TTL: 2d" https://qurl.sh
 
-# Capture the URL in a shell variable
-$ URL=$(curl -s -T ./build.log https://qurl.sh | awk '/^You can download/ {print $NF}')
+# Capture just the URL - nothing else is printed
+$ URL=$(curl -s -T ./build.log -H "X-Format: url" https://qurl.sh)
 $ echo "Build log: $URL"
+
+# Or the whole result as JSON, for a build step that wants the details
+$ curl -s -T ./build.log -H "X-Format: json" https://qurl.sh | jq -r .url
 
 # Get a file out of a running container
 $ docker exec my-container curl -s -T /app/debug.log https://qurl.sh</code></pre>
@@ -395,6 +399,30 @@ $ docker exec my-container curl -s -T /app/debug.log https://qurl.sh</code></pre
     curl -T - "https://qurl.sh/${1:-stdin.txt}"
   fi
 }</code></pre>
+
+    <h2 id="scripting">How do I use this in a script or CI job?</h2>
+    <p>
+        The default reply is written for a person reading a terminal. Two headers give you something a build script can
+        consume instead, so nothing has to scrape prose:
+    </p>
+    <pre><code>$ curl -T ./build.log -H "X-Format: url" https://qurl.sh
+https://qurl.sh/a1b2c3d4e5f6a7b8/build.log</code></pre>
+    <p><code>X-Format: json</code> returns the full result, and <code>Accept: application/json</code> does the same:</p>
+    <pre><code>{
+  "url": "https://qurl.sh/a1b2c3d4e5f6a7b8/build.log",
+  "qr_url": "https://qurl.sh/qr/a1b2c3d4e5f6a7b8/build.log",
+  "filename": "build.log",
+  "size_bytes": 14245,
+  "expires_at": 1787943431,
+  "expires_in_seconds": 86400,
+  "remaining_downloads": 1,
+  "password_protected": false
+}</code></pre>
+    <p>
+        Comparing <code>size_bytes</code> against the size on disk is the cheapest way for a job to assert the whole
+        file arrived. Anything else &mdash; including curl's default <code>Accept: */*</code> &mdash; keeps the
+        human-readable output, so existing commands are unaffected.
+    </p>
 
     <h2 id="limits">Limits, privacy and retention</h2>
     <table>

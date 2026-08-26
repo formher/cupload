@@ -111,6 +111,37 @@ def upload_file(filename):
     upload_bytes.observe(bytes_written)
     current_app.logger.info(f"File uploaded: {random_id}/{filename} (Size: {bytes_written} bytes, TTL: {ttl_str}, Limit: {remaining_downloads}) from {request.remote_addr}")
         
+    download_url = f"https://qurl.sh/{random_id}/{filename}"
+    qr_url = f"https://qurl.sh/qr/{random_id}/{filename}"
+
+    # The friendly banner below is worth nothing to a build script, which wants
+    # one value it can assign to a variable. Scraping prose for it is brittle -
+    # doubly so now that the prose has a header line - so offer the two shapes a
+    # CI job actually wants. X-Format matches the X-TTL/X-Downloads convention
+    # already used here; Accept is honoured too for anything speaking HTTP
+    # properly. curl sends Accept: */* by default, which stays human-readable.
+    fmt = (request.headers.get('X-Format') or '').strip().lower()
+    if not fmt and 'application/json' in request.headers.get('Accept', ''):
+        fmt = 'json'
+
+    if fmt == 'url':
+        return make_response(download_url + "\n",
+                             {'Content-Type': 'text/plain; charset=utf-8'})
+
+    if fmt == 'json':
+        payload = {
+            'url': download_url,
+            'qr_url': qr_url,
+            'filename': filename,
+            'size_bytes': bytes_written,
+            'expires_at': int(expiry_time),
+            'expires_in_seconds': ttl_seconds,
+            'remaining_downloads': remaining_downloads,
+            'password_protected': bool(password),
+        }
+        return current_app.response_class(
+            json.dumps(payload, indent=2) + "\n", mimetype='application/json')
+
     # Lead with an explicit confirmation: curl -T prints nothing of its own on
     # success, so without this the reply reads as output with no verdict
     # attached. The byte count is the useful half - it is how you tell a
@@ -125,8 +156,8 @@ def upload_file(filename):
 
     body = "\n".join(summary) + (
         f"\n\n"
-        f"You can download your file at https://qurl.sh/{random_id}/{filename}\n"
-        f"QR Code: https://qurl.sh/qr/{random_id}/{filename}\n"
+        f"You can download your file at {download_url}\n"
+        f"QR Code: {qr_url}\n"
         f"Try wget http://qurl.sh/{random_id}/{filename}\n"
     )
     # Without this Flask labels a bare string text/html.

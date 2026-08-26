@@ -30,6 +30,10 @@ Get a file onto a phone - prints a scannable QR code in the terminal:
 
     curl https://qurl.sh/qr/a1b2c3d4/report.pdf
 
+In a script or CI job, ask for just the URL (or `X-Format: json` for details):
+
+    URL=$(curl -s -T ./build.log -H "X-Format: url" https://qurl.sh)
+
 Optional upload headers:
 
     -H "X-TTL: 1h"          expire after 1h (s/m/h/d units, max 7d, default 24h)
