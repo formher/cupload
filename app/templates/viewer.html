@@ -135,7 +135,13 @@ padding: 0.4em 0.8em;
         </div>
         {% elif file_type == 'pdf' %}
         <div style="height: 800px;">
-            <embed src="?raw=true" type="application/pdf" width="100%" height="100%" style="border-radius: 8px;">
+            <!-- An <iframe>, not an <embed>: object-src governs <embed>/<object>, and the
+             page CSP sets object-src 'none', which Chrome enforces by refusing to load
+             the plugin data at all. An iframe falls under frame-src, which inherits
+             default-src 'self' and is therefore allowed, so the stricter object-src
+             stays in place. -->
+            <iframe src="?raw=true" title="{{ filename }}" width="100%" height="100%"
+                style="border: 0; border-radius: 8px;"></iframe>
         </div>
         {% endif %}
     </div>
