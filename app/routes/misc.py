@@ -100,6 +100,13 @@ def docs():
     return render_template('docs.html', max_size_mb=max_size_mb)
 
 
+@misc_bp.route('/transfer-sh-alternative', methods=['GET'])
+@limiter.limit("60 per minute")
+def transfer_sh_alternative():
+    max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
+    return render_template('transfer-sh-alternative.html', max_size_mb=max_size_mb)
+
+
 # Crawlers and AI assistants look for these at the site root, not under
 # /static/, so they get explicit routes rather than relying on the static mount.
 def _serve_static(name, mimetype):

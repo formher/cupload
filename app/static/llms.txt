@@ -45,6 +45,7 @@ Limits: 500 MB per file, 7 day maximum lifetime, 100 downloads maximum,
 
 ## Docs
 
+- [Coming from transfer.sh](https://qurl.sh/transfer-sh-alternative): the same `curl --upload-file` workflow, with Max-Days and Max-Downloads mapped onto X-TTL and X-Downloads, and an honest comparison of where the two differ.
 - [Full documentation](https://qurl.sh/docs): every endpoint, header, limit and recipe, written for both humans and assistants.
 - [Complete plain-text reference](https://qurl.sh/llms-full.txt): the same documentation flattened into one file, intended for language models.
 - [OpenAPI 3.1 specification](https://qurl.sh/openapi.json): machine-readable API description for agents and tooling.

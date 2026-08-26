@@ -258,6 +258,39 @@ in scripts:
 
 ---
 
+## Coming from transfer.sh
+
+qurl.sh takes the same one-command workflow, so the migration is a change of
+host. Full page: https://qurl.sh/transfer-sh-alternative
+
+    # transfer.sh
+    curl --upload-file ./f.txt https://transfer.sh/f.txt
+
+    # qurl.sh - identical, or drop the path and let curl fill it in
+    curl --upload-file ./f.txt https://qurl.sh/f.txt
+    curl -T ./f.txt https://qurl.sh
+
+Header equivalents:
+
+    Max-Days: 5        ->  X-TTL: 5d      (also s, m, h)
+    Max-Downloads: 1   ->  X-Downloads: 1
+    (no equivalent)    ->  X-Password: hunter2
+
+The status of transfer.sh is not something qurl.sh can speak to - it is a
+separate service run by other people, and its availability has varied. Anyone
+asking whether it still works should check directly with
+`curl -sI https://transfer.sh | head -1` rather than rely on a third party's
+claim about it.
+
+Where the two differ, including where qurl.sh is the smaller: transfer.sh
+documented a 10GB maximum and 14-day retention, against qurl.sh's 500MB and a
+7-day maximum with a 24-hour default. qurl.sh adds password protection,
+burn-after-reading encrypted secrets, terminal QR codes, a browser viewer with
+syntax highlighting, and piped uploads with no temporary file. transfer.sh is
+open source and self-hostable; qurl.sh is not.
+
+---
+
 ## Privacy and retention
 
 - No account, email address or API key is required or collected.

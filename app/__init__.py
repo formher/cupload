@@ -68,6 +68,7 @@ def create_app(config_class=Config):
     PUBLIC_ENDPOINTS = {
         'misc.index',
         'misc.docs',
+        'misc.transfer_sh_alternative',
         'misc.robots_txt',
         'misc.sitemap_xml',
         'misc.llms_txt',

@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}A free transfer.sh alternative that works today — qurl.sh{% endblock %}
+
+{% block description %}
+<meta name="description"
+    content="Coming from transfer.sh? qurl.sh keeps the same curl --upload-file workflow, with Max-Days and Max-Downloads mapped to X-TTL and X-Downloads. Free, no signup, no API key.">
+{% endblock %}
+
+{% block head %}
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="canonical" href="https://qurl.sh/transfer-sh-alternative">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;800&display=swap"
+    rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is transfer.sh still working?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "We do not run transfer.sh and cannot speak to its uptime, which has varied over time. Check it yourself in one command: curl -sI https://transfer.sh | head -1. If you need a working equivalent right now, qurl.sh takes the same curl --upload-file workflow with no signup and no API key."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a good free alternative to transfer.sh?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "qurl.sh keeps the same one-command workflow: curl --upload-file ./file.txt https://qurl.sh returns a shareable HTTPS link. No account, no email address, no API key and nothing to install. Files are ephemeral and delete themselves after one download or 24 hours by default, configurable up to 7 days and 100 downloads."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does qurl.sh support Max-Days and Max-Downloads like transfer.sh?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, under different header names. transfer.sh's Max-Days becomes X-TTL, which takes a unit suffix: -H \"X-TTL: 5d\". Max-Downloads becomes X-Downloads: -H \"X-Downloads: 1\". qurl.sh additionally supports X-Password to require a password before the file can be downloaded."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I update my transfer.sh bash function?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Change the host. A transfer() helper of the form curl --upload-file \"$1\" https://transfer.sh/$(basename \"$1\") becomes curl --upload-file \"$1\" https://qurl.sh/$(basename \"$1\"). The command shape, the arguments and the plain-text response are the same, so scripts that scraped the URL out of the reply keep working."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block styles %}
+.docs {
+max-width: 820px;
+}
+
+.docs h2 {
+font-size: 1.6rem;
+margin-top: 52px;
+margin-bottom: 8px;
+letter-spacing: -0.01em;
+text-align: left;
+}
+
+.docs p {
+margin: 12px 0;
+}
+
+.docs pre {
+margin: 12px 0;
+overflow-x: auto;
+}
+
+.docs table {
+width: 100%;
+border-collapse: collapse;
+margin: 20px 0;
+font-size: 0.95rem;
+display: block;
+overflow-x: auto;
+}
+
+.docs th,
+.docs td {
+text-align: left;
+padding: 10px 14px;
+border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.docs th {
+font-weight: 600;
+white-space: nowrap;
+}
+
+.docs td code {
+white-space: nowrap;
+}
+
+.docs a {
+color: var(--accent-color);
+}
+
+.lede {
+font-size: 1.1rem;
+}
+
+.callout {
+margin: 24px 0;
+padding: 16px 20px;
+background: var(--card-bg);
+border-left: 3px solid var(--accent-color);
+border-radius: var(--radius-sm);
+box-shadow: var(--shadow-soft);
+}
+
+footer {
+margin-top: 72px;
+text-align: center;
+font-size: 0.9rem;
+}
+{% endblock %}
+
+{% block content %}
+<div class="background-effect"></div>
+
+<div class="container docs">
+    <header>
+        <h1>qurl.sh</h1>
+        <h2 style="text-align:center;margin-top:8px">Coming from transfer.sh</h2>
+    </header>
+
+    <p class="lede">
+        <strong>qurl.sh</strong> keeps the workflow you already have in muscle memory:
+        one <code>curl --upload-file</code> and you get an HTTPS link back. No account,
+        no email address, no API key, nothing to install.
+    </p>
+
+    <pre><code>$ curl --upload-file ./report.pdf https://qurl.sh
+✔ Success - uploaded report.pdf (4.2 MB)
+  Expires in 24 hours or after 1 download, whichever comes first
+
+You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf</code></pre>
+
+    <h2 id="still-working">Is transfer.sh still working?</h2>
+    <p>
+        We do not run transfer.sh and will not pretend to know its current status &mdash; its availability has varied
+        over the years, and anything we wrote here would be out of date by the time you read it. Check for yourself, in
+        one command:
+    </p>
+    <pre><code>$ curl -sI https://transfer.sh | head -1</code></pre>
+    <p>
+        If it answers, use it. If it does not, or if you would rather not build a pipeline on something whose uptime you
+        have to keep checking, the rest of this page maps the workflow onto qurl.sh.
+    </p>
+
+    <h2 id="translate">Translating the commands</h2>
+    <p>The upload command is the same; only the host changes.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>transfer.sh</th>
+                <th>qurl.sh</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>curl --upload-file ./f.txt https://transfer.sh/f.txt</code></td>
+                <td><code>curl --upload-file ./f.txt https://qurl.sh/f.txt</code></td>
+            </tr>
+            <tr>
+                <td><em>(filename in the path)</em></td>
+                <td><code>curl -T ./f.txt https://qurl.sh</code> &mdash; the path is optional, curl fills it in</td>
+            </tr>
+            <tr>
+                <td><code>-H "Max-Days: 5"</code></td>
+                <td><code>-H "X-TTL: 5d"</code> &mdash; also accepts <code>s</code>, <code>m</code>, <code>h</code></td>
+            </tr>
+            <tr>
+                <td><code>-H "Max-Downloads: 1"</code></td>
+                <td><code>-H "X-Downloads: 1"</code></td>
+            </tr>
+            <tr>
+                <td><em>(no equivalent)</em></td>
+                <td><code>-H "X-Password: hunter2"</code> &mdash; prompts before the file is served</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2 id="bashrc">Updating your shell helper</h2>
+    <p>
+        Most people carried some version of this in <code>~/.bashrc</code>. Only the host needs to change &mdash; the
+        arguments and the plain-text reply have the same shape, so anything that scraped the URL out of the response
+        keeps working:
+    </p>
+    <pre><code>transfer() {
+  curl --upload-file "$1" "https://qurl.sh/$(basename "$1")"
+}</code></pre>
+    <p>Or a version that also accepts a pipe, which qurl.sh supports with no temporary file:</p>
+    <pre><code>qurl() {
+  if [ -t 0 ] && [ -n "$1" ]; then
+    curl -T "$1" https://qurl.sh
+  else
+    curl -T - "https://qurl.sh/${1:-stdin.txt}"
+  fi
+}
+
+$ kubectl logs my-pod | qurl pod.log</code></pre>
+
+    <h2 id="differences">Where the two differ</h2>
+    <p>
+        Worth knowing before you switch, including where qurl.sh is the smaller of the two. The transfer.sh column
+        describes what its documentation stated; check its own docs for anything current.
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th>transfer.sh (as documented)</th>
+                <th>qurl.sh</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Maximum file size</td>
+                <td>10 GB</td>
+                <td><strong>{{ max_size_mb }} MB</strong></td>
+            </tr>
+            <tr>
+                <td>Default retention</td>
+                <td>14 days</td>
+                <td>24 hours, or one download</td>
+            </tr>
+            <tr>
+                <td>Maximum retention</td>
+                <td>14 days</td>
+                <td>7 days</td>
+            </tr>
+            <tr>
+                <td>Password protection</td>
+                <td>&mdash;</td>
+                <td>Yes, <code>X-Password</code></td>
+            </tr>
+            <tr>
+                <td>Burn-after-reading secrets</td>
+                <td>&mdash;</td>
+                <td>Yes, <code>/secret</code> (encrypted, key never stored)</td>
+            </tr>
+            <tr>
+                <td>QR code for a phone</td>
+                <td>&mdash;</td>
+                <td>Yes, drawn in the terminal</td>
+            </tr>
+            <tr>
+                <td>Browser viewer</td>
+                <td>&mdash;</td>
+                <td>Syntax highlighting, Markdown, images, PDFs</td>
+            </tr>
+            <tr>
+                <td>Self-hostable</td>
+                <td>Yes, open source</td>
+                <td>No</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout">
+        <strong>If you need to move more than {{ max_size_mb }} MB in one go, qurl.sh is the wrong tool.</strong>
+        It is built for logs, dumps, configs and artifacts &mdash; the things you need off a server right now &mdash; not
+        for disk images. Split the file, or use object storage.
+    </div>
+
+    <h2 id="what-else">What else qurl.sh does</h2>
+    <p>Things that had no transfer.sh equivalent:</p>
+    <pre><code># Pipe straight from a command, no temp file
+$ kubectl logs my-pod | curl -T - https://qurl.sh/pod.log
+
+# Burn-after-reading encrypted secret
+$ echo "my-api-key" | curl -d @- https://qurl.sh/secret
+
+# QR code drawn in the terminal, to get a file onto your phone
+$ curl https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf
+
+# Pretty-print JSON, YAML or XML
+$ curl -F "file=@config.yaml" https://qurl.sh/pretty</code></pre>
+
+    <p>
+        Full reference: <a href="/docs">the documentation</a>. Machine-readable:
+        <a href="/llms.txt">llms.txt</a> &middot; <a href="/openapi.json">OpenAPI</a>.
+    </p>
+
+    <footer>
+        <p><a href="/">← qurl.sh</a></p>
+    </footer>
+</div>
+{% endblock %}
