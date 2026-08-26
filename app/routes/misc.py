@@ -17,6 +17,7 @@ from app.config import Config
 misc_bp = Blueprint('misc', __name__)
 
 @misc_bp.route('/', methods=['GET'])
+@limiter.limit("60 per minute")
 def index():
     agent = request.user_agent.string.lower()
     if any(cli in agent for cli in ['curl', 'wget', 'httpie']):
@@ -65,6 +66,7 @@ No signup, no API key, nothing to install.
     return render_template('index.html', max_size_mb=max_size_mb)
 
 @misc_bp.route('/docs', methods=['GET'])
+@limiter.limit("60 per minute")
 def docs():
     max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
     return render_template('docs.html', max_size_mb=max_size_mb)
@@ -81,26 +83,31 @@ def _serve_static(name, mimetype):
 
 
 @misc_bp.route('/robots.txt', methods=['GET'])
+@limiter.exempt
 def robots_txt():
     return _serve_static('robots.txt', 'text/plain')
 
 
 @misc_bp.route('/sitemap.xml', methods=['GET'])
+@limiter.exempt
 def sitemap_xml():
     return _serve_static('sitemap.xml', 'application/xml')
 
 
 @misc_bp.route('/llms.txt', methods=['GET'])
+@limiter.exempt
 def llms_txt():
     return _serve_static('llms.txt', 'text/plain')
 
 
 @misc_bp.route('/llms-full.txt', methods=['GET'])
+@limiter.exempt
 def llms_full_txt():
     return _serve_static('llms-full.txt', 'text/plain')
 
 
 @misc_bp.route('/openapi.json', methods=['GET'])
+@limiter.exempt
 def openapi_json():
     return _serve_static('openapi.json', 'application/json')
 

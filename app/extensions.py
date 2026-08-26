@@ -7,7 +7,10 @@ from prometheus_client import Counter, Histogram
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
+    storage_uri="memory://",
+    # Emit Retry-After and X-RateLimit-* on a 429. Crawlers use Retry-After to
+    # reschedule instead of treating the block as a site-level failure.
+    headers_enabled=True,
 )
 
 scheduler = BackgroundScheduler()
