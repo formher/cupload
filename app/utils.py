@@ -12,6 +12,50 @@ logger = logging.getLogger(__name__)
 from flask import current_app
 from app.extensions import expiries_total
 
+# User-agent fragments for clients that fetch a URL without a human asking for
+# that specific file: search crawlers, AI crawlers, SEO scrapers, archivers and
+# link unfurlers. Every hit on /<id>/<filename> decrements the download counter
+# and can delete the file, so an unfurl in a chat app or a crawl by Bingbot
+# silently consumes somebody's one-and-only download before they read it. These
+# clients are served a 404 and never reach the counter.
+#
+# Deliberately excludes curl/wget/httpie: those are real users, and serving them
+# the raw bytes is the entire point of the service.
+BOT_UA_TOKENS = (
+    # Search engines
+    'googlebot', 'bingbot', 'msnbot', 'slurp', 'duckduckbot', 'baiduspider',
+    'yandex', 'sogou', 'exabot', 'petalbot', 'applebot', 'seznambot',
+    'qwantify', 'naver', 'google-read-aloud', 'google-site-verification',
+    # AI crawlers and assistants
+    'gptbot', 'oai-searchbot', 'chatgpt-user', 'claudebot', 'claude-user',
+    'claude-searchbot', 'anthropic-ai', 'perplexitybot', 'perplexity-user',
+    'ccbot', 'google-extended', 'meta-externalagent', 'amazonbot',
+    'bytespider', 'cohere-ai', 'diffbot', 'omgili', 'duckassistbot',
+    'mistralai-user', 'timpibot', 'youbot', 'firecrawl',
+    # SEO and commercial crawlers
+    'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'dataforseo', 'blexbot',
+    'screaming frog', 'megaindex', 'serpstatbot', 'zoominfobot', 'barkrowler',
+    # Link unfurlers and preview fetchers (chat apps, social networks)
+    'slackbot', 'slack-imgproxy', 'twitterbot', 'facebookexternalhit', 'facebot',
+    'linkedinbot', 'discordbot', 'telegrambot', 'whatsapp', 'skypeuripreview',
+    'embedly', 'quora link preview', 'redditbot', 'pinterest', 'vkshare',
+    'tumblr', 'flipboard', 'nuzzel', 'outbrain', 'bitlybot', 'viber',
+    'googledocs', 'microsoftpreview', 'iframely',
+    # Archivers
+    'ia_archiver', 'archive.org_bot', 'wayback', 'heritrix',
+)
+
+
+def is_bot(user_agent):
+    """True for crawlers and link-preview fetchers, which must not consume a download."""
+    if not user_agent:
+        # A request with no User-Agent at all is far more likely to be a scraper
+        # than a person; real browsers and curl always send one.
+        return True
+    agent = user_agent.lower()
+    return any(token in agent for token in BOT_UA_TOKENS)
+
+
 def parse_ttl(ttl_str):
     max_ttl = current_app.config.get('MAX_TTL_SECONDS', 604800)
     default_ttl = 24 * 3600

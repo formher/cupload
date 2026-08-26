@@ -57,6 +57,34 @@ def create_app(config_class=Config):
     app.register_blueprint(files_bp)
     app.register_blueprint(secrets_bp)
 
+    # Only the marketing and documentation surface may be indexed. Everything
+    # else — uploaded files, QR codes, pretty-printed documents, secrets, the
+    # password prompt and every error page — gets noindex.
+    #
+    # This is an allowlist on purpose: a route added later is non-indexable by
+    # default instead of leaking until somebody remembers to update a pattern.
+    # It also has to be a header rather than a <meta> tag, because most of what
+    # is served here (.log, .json, .sql, .pdf) is not HTML at all.
+    PUBLIC_ENDPOINTS = {
+        'misc.index',
+        'misc.docs',
+        'misc.robots_txt',
+        'misc.sitemap_xml',
+        'misc.llms_txt',
+        'misc.llms_full_txt',
+        'misc.openapi_json',
+        'static',
+    }
+
+    @app.after_request
+    def set_robots_tag(response):
+        from flask import request
+        if request.endpoint not in PUBLIC_ENDPOINTS:
+            response.headers['X-Robots-Tag'] = (
+                'noindex, nofollow, noarchive, nosnippet, noimageindex'
+            )
+        return response
+
     # Apply ProxyFix for Nginx
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(

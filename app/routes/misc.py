@@ -7,7 +7,11 @@ import uuid
 import json
 import yaml
 import xml.dom.minidom
-from app.extensions import limiter, uploads_total
+import time
+import shutil
+from werkzeug.security import check_password_hash
+from app.extensions import limiter, uploads_total, downloads_total, expiries_total
+from app.utils import is_bot, update_meta_cleanup
 from app.config import Config
 
 misc_bp = Blueprint('misc', __name__)
@@ -103,6 +107,9 @@ def openapi_json():
 
 @misc_bp.route('/qr/<random_id>/<filename>', methods=['GET'])
 def get_qr(random_id, filename):
+    if is_bot(request.user_agent.string):
+        abort(404)
+
     # Verify file exists first (but don't delete it)
     upload_folder = current_app.config['UPLOAD_FOLDER']
     dir_path = os.path.join(upload_folder, random_id)
@@ -142,7 +149,7 @@ def upload_pretty_file():
     if request.content_length and request.content_length > max_pretty:
         return f"File too large to pretty-print. Max is {max_pretty // (1024 * 1024)}MB.\n", 413
 
-    random_id = str(uuid.uuid4())[:8]
+    random_id = uuid.uuid4().hex[:16]
     upload_folder = current_app.config['UPLOAD_FOLDER']
     dir_path = os.path.join(upload_folder, random_id)
     os.makedirs(dir_path, exist_ok=True)
@@ -152,14 +159,45 @@ def upload_pretty_file():
     uploads_total.labels(kind='pretty').inc()
     return f"You can access your pretty-printed file at https://qurl.sh/pretty/{random_id}/{uploaded_file.filename}\n"
 
-@misc_bp.route('/pretty/<random_id>/<filename>', methods=['GET'])
+@misc_bp.route('/pretty/<random_id>/<filename>', methods=['GET', 'POST'])
 def render_pretty_file(random_id, filename):
+    if is_bot(request.user_agent.string):
+        abort(404)
+
     upload_folder = current_app.config['UPLOAD_FOLDER']
     dir_path = os.path.join(upload_folder, random_id)
     file_path = os.path.join(dir_path, filename)
+    meta_path = file_path + '.meta'
 
     if not os.path.exists(file_path):
         abort(404)
+
+    # A file uploaded through PUT / carries a .meta; /pretty's own uploads do
+    # not. Where one exists it has to be honoured exactly as on the download
+    # route, because /<id>/<name>.json and /pretty/<id>/<name>.json read the
+    # same bytes off disk. Without this, /pretty served password-protected and
+    # expired files in full, unlimited times, without touching the counter.
+    meta_data = {}
+    if os.path.exists(meta_path):
+        with open(meta_path, 'r') as f:
+            meta_data = json.load(f)
+
+    if 'expiry_time' in meta_data and time.time() > meta_data['expiry_time']:
+        shutil.rmtree(dir_path, ignore_errors=True)
+        expiries_total.labels(reason='ttl').inc()
+        current_app.logger.info(f"File Expired (pretty access): {random_id}/{filename}")
+        abort(404)
+
+    if 'password_hash' in meta_data:
+        if request.method == 'POST':
+            password_input = request.form.get('password')
+            if not password_input or not check_password_hash(meta_data['password_hash'], password_input):
+                current_app.logger.warning(
+                    f"Failed password attempt (pretty) for {random_id}/{filename} from {request.remote_addr}"
+                )
+                return render_template('password.html', error="Invalid Password"), 401
+        else:
+            return render_template('password.html')
 
     max_pretty = current_app.config['MAX_VIEWER_BYTES']
     if os.path.getsize(file_path) > max_pretty:
@@ -182,6 +220,14 @@ def render_pretty_file(random_id, filename):
         else:
             return "Unsupported file format", 415
 
+        # Only files that carry a .meta are metered. /pretty's own uploads have
+        # none, and update_meta_cleanup deletes a directory outright when the
+        # meta is missing, so calling it for those would destroy the document
+        # on first view.
+        if meta_data:
+            update_meta_cleanup(file_path, dir_path, meta_path)
+
+        downloads_total.labels(mode='pretty').inc()
         return render_template('pretty.html', content=content, filename=filename)
     except Exception as e:
         return f"Error parsing file: {e}", 500

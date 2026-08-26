@@ -4,6 +4,7 @@ import uuid
 import shutil
 from cryptography.fernet import Fernet
 from app.extensions import limiter, uploads_total, downloads_total, expiries_total
+from app.utils import is_bot
 
 secrets_bp = Blueprint('secrets', __name__)
 
@@ -34,7 +35,7 @@ def create_secret():
     token = f.encrypt(data)
     
     # Store
-    random_id = str(uuid.uuid4())[:12] # Longer ID for secrets
+    random_id = uuid.uuid4().hex[:24]  # 96 bits; longer ID for secrets
     dir_path = os.path.join(upload_folder, 'secrets', random_id)
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, 'secret.enc')
@@ -53,6 +54,13 @@ def create_secret():
 
 @secrets_bp.route('/secret/<random_id>/<key>', methods=['GET'])
 def get_secret(random_id, key):
+    # Reading a secret destroys it. A crawler or a chat client unfurling the
+    # link would burn it before the intended recipient ever loaded the page,
+    # and robots.txt alone does not stop the ones that ignore it.
+    if is_bot(request.user_agent.string):
+        current_app.logger.info(f"Bot refused secret: {random_id}")
+        abort(404)
+
     try:
         upload_folder = current_app.config['UPLOAD_FOLDER']
         dir_path = os.path.join(upload_folder, 'secrets', random_id)

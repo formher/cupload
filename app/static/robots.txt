@@ -11,8 +11,6 @@ Allow: /llms-full.txt
 Allow: /openapi.json
 Disallow: /admin
 Disallow: /secret/
-Disallow: /pretty/
-Disallow: /qr/
 
 # AI assistants and their crawlers are explicitly welcome to read and cite
 # the documentation. Uploaded user content is excluded above.
