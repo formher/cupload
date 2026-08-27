@@ -148,6 +148,20 @@ def llms_full_txt():
     return _serve_static('llms-full.txt', 'text/plain')
 
 
+@misc_bp.route('/.well-known/security.txt', methods=['GET'])
+@limiter.exempt
+def security_txt():
+    return _serve_static('security.txt', 'text/plain')
+
+
+# RFC 9116 defines /.well-known/ as the canonical location, but plenty of
+# scanners and researchers still try the bare path first.
+@misc_bp.route('/security.txt', methods=['GET'])
+@limiter.exempt
+def security_txt_legacy():
+    return _serve_static('security.txt', 'text/plain')
+
+
 @misc_bp.route('/openapi.json', methods=['GET'])
 @limiter.exempt
 def openapi_json():

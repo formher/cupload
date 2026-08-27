@@ -1,0 +1,18 @@
+# Security contact for qurl.sh — https://www.rfc-editor.org/rfc/rfc9116
+#
+# If you have found a vulnerability, please report it privately using the
+# contact below. We will confirm receipt and keep you updated on the fix.
+# Please give us a reasonable window to remediate before public disclosure.
+#
+# In scope:     qurl.sh and its subdomains.
+# Out of scope: findings that require physical access, social engineering, or
+#               volumetric denial of service; missing headers with no
+#               demonstrated impact; reports produced solely by an automated
+#               scanner with no working proof of concept.
+#
+# There is no paid bounty programme. We are glad to credit reporters who ask.
+
+Contact: mailto:formher@gmail.com
+Expires: 2027-08-27T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://qurl.sh/.well-known/security.txt
