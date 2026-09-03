@@ -34,7 +34,7 @@
       "name": "What is a good free alternative to transfer.sh?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "qurl.sh keeps the same one-command workflow: curl --upload-file ./file.txt https://qurl.sh returns a shareable HTTPS link. No account, no email address, no API key and nothing to install. Files are ephemeral and delete themselves after one download or 24 hours by default, configurable up to 7 days and 100 downloads."
+        "text": "qurl.sh keeps the same one-command workflow: curl --upload-file ./file.txt https://qurl.sh returns a shareable HTTPS link. No account, no email address, no API key and nothing to install. Files are ephemeral: text, code, images and PDFs default to 7 days or 100 downloads, while archives and binaries are deleted after one download or 24 hours. Both are configurable with X-TTL and X-Downloads."
       }
     },
     {
@@ -146,7 +146,7 @@ font-size: 0.9rem;
 
     <pre><code>$ curl --upload-file ./report.pdf https://qurl.sh
 ✔ Success - uploaded report.pdf (4.2 MB)
-  Expires in 24 hours or after 1 download, whichever comes first
+  Expires in 7 days or after 100 downloads, whichever comes first
 
 You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf</code></pre>
 
@@ -237,7 +237,7 @@ $ kubectl logs my-pod | qurl pod.log</code></pre>
             <tr>
                 <td>Default retention</td>
                 <td>14 days</td>
-                <td>24 hours, or one download</td>
+                <td>7 days for viewable files; 24 hours or one download otherwise</td>
             </tr>
             <tr>
                 <td>Maximum retention</td>

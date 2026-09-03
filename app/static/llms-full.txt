@@ -2,8 +2,8 @@
 
 > qurl.sh is a free, no-signup, terminal-first file sharing service. You upload a
 > file with one `curl -T` command and get back a short HTTPS link. Files are
-> ephemeral: by default a file is deleted after a single download, or after 24
-> hours, whichever comes first. There is no account, no API key, no SDK, no
+> ephemeral: text, code, images and PDFs default to 7 days or 100 downloads,
+> while archives and binaries are deleted after one download or 24 hours. There is no account, no API key, no SDK, no
 > client to install, and no rate-limited free tier to sign up for — curl, wget or
 > httpie is the entire client.
 
@@ -45,7 +45,7 @@ no path, curl appends the local filename, so the request goes to
 `https://qurl.sh/report.pdf`. The response is plain text, confirming the upload before the links:
 
     ✔ Success - uploaded report.pdf (4.2 MB)
-      Expires in 24 hours or after 1 download, whichever comes first
+      Expires in 7 days or after 100 downloads, whichever comes first
 
     You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf
     QR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf
@@ -103,7 +103,7 @@ All options are optional request headers on the upload `PUT`.
 Format is an integer followed by a unit character: `s` seconds, `m` minutes,
 `h` hours, `d` days. Examples: `90s`, `30m`, `6h`, `7d`.
 
-- Default: 24 hours.
+- Default: 7 days for browser-viewable files (text, code, images, PDFs), 24 hours for everything else.
 - Maximum: 7 days. Larger values are silently clamped to 7 days.
 - An unparseable value falls back to the 24 hour default.
 
@@ -111,7 +111,9 @@ Format is an integer followed by a unit character: `s` seconds, `m` minutes,
 
     curl -T ./file.txt -H "X-Downloads: 5" https://qurl.sh
 
-- Default: 1. The file is deleted immediately after the first download.
+- Default: 100 for browser-viewable files, 1 for everything else. A file a browser
+  can display is consumed by being looked at, so a default of one download would
+  leave the link dead as soon as anyone opened it.
 - Maximum: 100. Larger values are clamped to 100.
 - The file is deleted as soon as the counter reaches zero, even if the TTL has
   not expired yet. Whichever limit is hit first wins.
@@ -222,9 +224,9 @@ HTML landing page. The service distinguishes them by `User-Agent`.
 |------------------------------|-----------------------------------------|
 | Maximum file size            | 500 MB                                  |
 | Maximum lifetime             | 7 days                                  |
-| Default lifetime             | 24 hours                                |
+| Default lifetime             | 7 days viewable / 24 hours otherwise    |
 | Maximum downloads per file   | 100                                     |
-| Default downloads per file   | 1                                       |
+| Default downloads per file   | 100 viewable / 1 otherwise              |
 | Maximum secret size          | 1 MB                                    |
 | Maximum pretty-print size    | 5 MB                                    |
 | Upload rate limit            | 10 uploads per minute per IP            |

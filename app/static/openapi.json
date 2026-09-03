@@ -59,7 +59,7 @@
             "name": "X-TTL",
             "in": "header",
             "required": false,
-            "description": "Lifetime as an integer plus a unit character: s, m, h or d. Defaults to 24h, clamped to a maximum of 7d.",
+            "description": "Lifetime as an integer plus a unit character: s, m, h or d. Clamped to a maximum of 7d. Defaults to 7d for browser-viewable files (text, code, images, PDFs) and 24h otherwise.",
             "schema": {
               "type": "string",
               "pattern": "^[0-9]+[smhd]$"
@@ -70,12 +70,11 @@
             "name": "X-Downloads",
             "in": "header",
             "required": false,
-            "description": "Number of downloads allowed before the file is deleted. Defaults to 1, clamped to a maximum of 100.",
+            "description": "Number of downloads allowed before the file is deleted, clamped to a maximum of 100. Defaults to 100 for browser-viewable files and 1 otherwise: a file a browser can display is consumed by being viewed, so one download would leave the link dead.",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
-              "default": 1
+              "maximum": 100
             },
             "example": 5
           },
@@ -121,7 +120,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "\u2714 Success - uploaded report.pdf (4.2 MB)\n  Expires in 24 hours or after 1 download, whichever comes first\n\nYou can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf\nQR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf\nTry wget http://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf\n"
+                "example": "\u2714 Success - uploaded report.pdf (4.2 MB)\n  Expires in 7 days or after 100 downloads, whichever comes first\n\nYou can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf\nQR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf\nTry wget http://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf\n"
               },
               "application/json": {
                 "schema": {

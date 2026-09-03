@@ -151,9 +151,8 @@ def is_bot(user_agent):
     return any(token in agent for token in BOT_UA_TOKENS)
 
 
-def parse_ttl(ttl_str):
+def parse_ttl(ttl_str, default_ttl=24 * 3600):
     max_ttl = current_app.config.get('MAX_TTL_SECONDS', 604800)
-    default_ttl = 24 * 3600
 
     if not ttl_str:
         return default_ttl

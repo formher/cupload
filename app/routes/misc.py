@@ -94,7 +94,9 @@ Full docs:
   https://qurl.sh/llms.txt        (for AI assistants)
   https://qurl.sh/openapi.json    (machine-readable API)
 
-Note: Files auto-delete after the first download. Max {max_size_mb}MB.
+Defaults: text, code, images and PDFs last 7 days or 100 downloads.
+          Archives and binaries are deleted after 1 download or 24h.
+          Override either with X-TTL / X-Downloads. Max {max_size_mb}MB.
 No signup, no API key, nothing to install.
 """
     max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)

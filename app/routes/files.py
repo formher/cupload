@@ -27,6 +27,18 @@ MARKDOWN_ALLOWED_ATTRS = {
     'div': ['class'],
 }
 
+# Categories the browser viewer can render. Defined at module level because
+# upload_file needs them too, to decide the default TTL and download count.
+CODE_EXTS = [
+    '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml',
+    '.sh', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb',
+    '.php', '.sql', '.xml', '.log', '.ini', '.conf'
+]
+MARKDOWN_EXTS = ['.md', '.markdown']
+IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
+PDF_EXTS = ['.pdf']
+VIEWABLE_EXTS = frozenset(CODE_EXTS + MARKDOWN_EXTS + IMAGE_EXTS + PDF_EXTS)
+
 files_bp = Blueprint('files', __name__)
 
 @files_bp.route('/<filename>', methods=['PUT'])
@@ -67,12 +79,22 @@ def upload_file(filename):
     ttl_str = request.headers.get('X-TTL')
     downloads_str = request.headers.get('X-Downloads')
     
-    ttl_seconds = parse_ttl(ttl_str)
+    # A browser-viewable file is consumed by being looked at, so burning it
+    # after one download leaves the recipient (or the sender re-checking their
+    # own link) with a dead URL. Those default to a week and a high count
+    # instead. An explicit header always wins over both defaults.
+    viewable = os.path.splitext(filename)[1].lower() in VIEWABLE_EXTS
+    default_ttl = (current_app.config['VIEWABLE_DEFAULT_TTL_SECONDS'] if viewable
+                   else 24 * 3600)
+    default_downloads = (current_app.config['VIEWABLE_DEFAULT_DOWNLOADS'] if viewable
+                         else 1)
+
+    ttl_seconds = parse_ttl(ttl_str, default_ttl=default_ttl)
     expiry_time = time.time() + ttl_seconds
     try:
-        requested_downloads = int(downloads_str) if downloads_str else 1
+        requested_downloads = int(downloads_str) if downloads_str else default_downloads
     except ValueError:
-        requested_downloads = 1
+        requested_downloads = default_downloads
         
     max_downloads = current_app.config.get('MAX_DOWNLOADS', 100)
     remaining_downloads = min(requested_downloads, max_downloads)
@@ -222,17 +244,11 @@ def serve_file(random_id, filename):
             
             ext = os.path.splitext(filename)[1].lower()
             
-            # Categories
-            code_exts = [
-                '.txt', '.py', '.js', '.html', '.css', '.json', '.yaml', '.yml',
-                '.sh', '.go', '.rs', '.c', '.cpp', '.h', '.java', '.rb',
-                '.php', '.sql', '.xml', '.log', '.ini', '.conf'
-            ]
-            markdown_exts = ['.md', '.markdown']
-            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
-            pdf_exts = ['.pdf']
-
-            supported_exts = code_exts + markdown_exts + image_exts + pdf_exts
+            code_exts = CODE_EXTS
+            markdown_exts = MARKDOWN_EXTS
+            image_exts = IMAGE_EXTS
+            pdf_exts = PDF_EXTS
+            supported_exts = VIEWABLE_EXTS
 
             # Text is read fully into memory to be rendered into the template,
             # so large files skip the viewer and fall through to the streaming

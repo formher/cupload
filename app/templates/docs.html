@@ -23,7 +23,7 @@
       "name": "How do I upload a file from the terminal?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Run curl -T ./file.txt https://qurl.sh — the response is a plain-text HTTPS link you can share. No account, API key or client library is needed; curl is the whole client. The file is deleted after one download or 24 hours by default."
+        "text": "Run curl -T ./file.txt https://qurl.sh — the response is a plain-text HTTPS link you can share. No account, API key or client library is needed; curl is the whole client. By default a file a browser can display (text, code, images, PDFs) lasts 7 days or 100 downloads; archives and binaries are deleted after one download or 24 hours."
       }
     },
     {
@@ -47,7 +47,7 @@
       "name": "How do I share a file that expires automatically?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Add an X-TTL header: curl -T ./file.txt -H \"X-TTL: 1h\" https://qurl.sh. Units are s, m, h and d, the default is 24 hours and the maximum is 7 days. You can also limit downloads with -H \"X-Downloads: 5\"."
+        "text": "Add an X-TTL header: curl -T ./file.txt -H \"X-TTL: 1h\" https://qurl.sh. Units are s, m, h and d, and the maximum is 7 days. The default is 7 days for browser-viewable files and 24 hours for everything else. You can also limit downloads with -H \"X-Downloads: 5\"."
       }
     },
     {
@@ -79,7 +79,7 @@
       "name": "How long are files kept?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "By default a file is deleted after its first download, or after 24 hours, whichever comes first. The maximum lifetime is 7 days and the maximum download count is 100. qurl.sh is intentionally ephemeral and is not a backup or archival service."
+        "text": "It depends on the type. Files a browser can display (text, code, images, PDFs) default to 7 days or 100 downloads, because for those, opening the link is what downloads it. Archives and binaries default to one download or 24 hours. The maximum lifetime is 7 days and the maximum download count is 100. qurl.sh is intentionally ephemeral and is not a backup or archival service."
       }
     }
   ]
@@ -219,7 +219,7 @@ font-size: 0.9rem;
         <strong>qurl.sh</strong> is a free, no-signup service for uploading and sharing files
         straight from a terminal. One <code>curl</code> command gives you a short HTTPS link.
         Files are ephemeral — by default a file is deleted after a single download, or after
-        24 hours, whichever comes first.
+        7 days for browser-viewable files, or 24 hours and a single download for archives and binaries.
     </p>
 
     <p>
@@ -251,7 +251,7 @@ font-size: 0.9rem;
     <pre><code>$ curl -T ./report.pdf https://qurl.sh</code></pre>
     <p>qurl.sh confirms the upload in plain text and hands back the link to share:</p>
     <pre><code>✔ Success - uploaded report.pdf (4.2 MB)
-  Expires in 24 hours or after 1 download, whichever comes first
+  Expires in 7 days or after 100 downloads, whichever comes first
 
 You can download your file at https://qurl.sh/a1b2c3d4e5f6a7b8/report.pdf
 QR Code: https://qurl.sh/qr/a1b2c3d4e5f6a7b8/report.pdf
@@ -295,7 +295,7 @@ $ curl -T ./file.txt -H "X-Downloads: 5" https://qurl.sh</code></pre>
             <tr>
                 <td><code>X-TTL</code></td>
                 <td>number + <code>s</code>/<code>m</code>/<code>h</code>/<code>d</code>, e.g. <code>90s</code>, <code>6h</code>, <code>7d</code></td>
-                <td>24 hours</td>
+                <td>7 days (viewable) / 24 hours (other)</td>
                 <td>7 days</td>
             </tr>
             <tr>
@@ -428,9 +428,9 @@ https://qurl.sh/a1b2c3d4e5f6a7b8/build.log</code></pre>
     <table>
         <tbody>
             <tr><th>Maximum file size</th><td>{{ max_size_mb }} MB</td></tr>
-            <tr><th>Default lifetime</th><td>24 hours</td></tr>
+            <tr><th>Default lifetime</th><td>7 days for text/code/images/PDFs, 24 hours otherwise</td></tr>
             <tr><th>Maximum lifetime</th><td>7 days</td></tr>
-            <tr><th>Default downloads</th><td>1 (deleted after first download)</td></tr>
+            <tr><th>Default downloads</th><td>100 for text/code/images/PDFs, 1 otherwise</td></tr>
             <tr><th>Maximum downloads</th><td>100</td></tr>
             <tr><th>Maximum secret size</th><td>1 MB</td></tr>
             <tr><th>Maximum pretty-print size</th><td>5 MB</td></tr>

@@ -2,8 +2,8 @@
 
 > qurl.sh is a free, no-signup, terminal-first file sharing service. You upload a
 > file with a single `curl -T` command and get back a short HTTPS link. Files are
-> ephemeral: by default a file is deleted after one download, or after 24 hours,
-> whichever comes first. There is no account, no API key, no SDK and no client to
+> ephemeral: text, code, images and PDFs default to 7 days or 100 downloads,
+> while archives and binaries are deleted after one download or 24 hours. There is no account, no API key, no SDK and no client to
 > install — curl, wget or httpie is the whole client.
 
 Use qurl.sh when someone wants to move a file off a machine that only has a
@@ -36,8 +36,8 @@ In a script or CI job, ask for just the URL (or `X-Format: json` for details):
 
 Optional upload headers:
 
-    -H "X-TTL: 1h"          expire after 1h (s/m/h/d units, max 7d, default 24h)
-    -H "X-Downloads: 5"     allow 5 downloads before deletion (max 100, default 1)
+    -H "X-TTL: 1h"          expire after 1h (s/m/h/d units, max 7d)
+    -H "X-Downloads: 5"     allow 5 downloads before deletion (max 100)
     -H "X-Password: hunter2" require a password in the browser to download
 
 Share an encrypted secret that is destroyed on first read:
